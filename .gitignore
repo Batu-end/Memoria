@@ -1,0 +1,28 @@
+# macOS System Files
+.DS_Store
+
+# Xcode - Build and Derived Data
+# These are huge cache files you NEVER want to commit
+**/DerivedData/
+*.bda
+*.hmap
+*.xccheckout
+*.xccheckout
+build/
+*.moved-aside
+*.xcuserstate
+*.xcusernamedata
+*.vindex
+
+# User-Specific Xcode Settings (Breakpoints, Window Layouts)
+# Each developer has their own, so don't sync these
+*.xcuserdata/
+**/UserInterfaceState.xcuserstate
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Fastlane (If you use it later)
+fastlane/report.xml
+fastlane/screenshots
