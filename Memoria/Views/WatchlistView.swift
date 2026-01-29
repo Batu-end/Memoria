@@ -9,6 +9,8 @@ import SwiftUI
 
 // Visualization
 struct WatchlistView: View {
+    @State private var showAddTrade = false
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -28,6 +30,19 @@ struct WatchlistView: View {
                 .listStyle(.plain)
             }
             .navigationTitle("Watchlist")
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button(action: { showAddTrade = true }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(.purple)
+                    }
+                }
+            }
+            .sheet(isPresented: $showAddTrade) {
+                AddTradeView()
+                    .presentationDetents([.medium])
+            }
         }
     }
 }
