@@ -13,6 +13,9 @@ struct MemoriaApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Trade.self,
+            AccountSnapshot.self,
+            ActivityLog.self,
+            WatchlistItem.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

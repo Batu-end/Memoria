@@ -11,8 +11,8 @@ import SwiftData
 // Visualization
 struct WatchlistView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<Trade> { $0.statusRaw == "Watchlist" }, sort: \Trade.dateAdded, order: .reverse)
-    private var watchlistTrades: [Trade]
+    @Query(sort: \WatchlistItem.dateAdded, order: .reverse)
+    private var watchlistItems: [WatchlistItem]
     
     @State private var showAddTrade = false
     
@@ -31,7 +31,7 @@ struct WatchlistView: View {
                 .ignoresSafeArea()
                 
                 // Live Data List
-                if watchlistTrades.isEmpty {
+                if watchlistItems.isEmpty {
                     ContentUnavailableView(
                         "No items in Watchlist",
                         systemImage: "eye.slash",
@@ -39,8 +39,8 @@ struct WatchlistView: View {
                     )
                 } else {
                     List {
-                        ForEach(watchlistTrades) { trade in
-                            TradeRowView(trade: trade)
+                        ForEach(watchlistItems) { item in
+                            WatchlistRowView(item: item)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                         }
@@ -72,9 +72,9 @@ struct WatchlistView: View {
                 }
             }
             // --- POPUP SHEET LOGIC ---
-            // This tells SwiftUI: "When 'showAddTrade' is true, popup the AddTradeView"
+            // This tells SwiftUI: "When 'showAddTrade' is true, popup the AddWatchlistItemView"
             .sheet(isPresented: $showAddTrade) {
-                AddTradeView()
+                AddWatchlistItemView()
                     .presentationDetents([.medium]) // Makes it take up half the screen
             }
         }
@@ -83,55 +83,14 @@ struct WatchlistView: View {
     private func deleteItems(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(watchlistTrades[index])
+                modelContext.delete(watchlistItems[index])
             }
         }
     }
 }
 
-// Minimal Row Component - Connected to Real Data
-struct TradeRowView: View {
-    let trade: Trade
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(trade.ticker)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-                
-                Text(trade.status.rawValue)
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(Color.purple.opacity(0.2))
-                    .foregroundColor(.purple)
-                    .cornerRadius(8)
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 4) {
-                if let price = trade.entryPrice {
-                    Text(price, format: .currency(code: "USD"))
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                } else {
-                    Text("--")
-                        .foregroundColor(.gray)
-                }
-            }
-        }
-        .padding(16)
-        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
-    }
-}
+// Renamed from TradeRowView to avoid confusion
+
 
 #Preview {
     WatchlistView()
