@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+// Renamed from TradeRowView to avoid confusion
 struct WatchlistRowView: View {
     let item: WatchlistItem
     

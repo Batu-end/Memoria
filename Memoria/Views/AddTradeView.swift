@@ -12,13 +12,10 @@ struct AddTradeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    @State private var ticker = ""
-    @State private var priceString = ""
-    
-    // Validation Logic
-    private var isValidPrice: Bool {
-        return Double(priceString) != nil
-    }
+    // THE VIEWMODEL
+    // The View owns the StateObject (or @State in iOS 17+) of the ViewModel.
+    // The View's only job is to bind these values to UI components.
+    @State private var viewModel = AddTradeViewModel()
     
     var body: some View {
         NavigationStack {
@@ -40,7 +37,7 @@ struct AddTradeView: View {
                                 .fontWeight(.bold)
                                 .foregroundStyle(.gray)
                             
-                            TextField("Ticker", text: $ticker)
+                            TextField("Ticker", text: $viewModel.ticker)
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .textFieldStyle(.plain)
                                 .padding()
@@ -60,7 +57,7 @@ struct AddTradeView: View {
                                 .fontWeight(.bold)
                                 .foregroundStyle(.gray)
                             
-                            TextField("0.00", text: $priceString)
+                            TextField("0.00", text: $viewModel.priceString)
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .textFieldStyle(.plain)
                                 .padding()
@@ -69,7 +66,7 @@ struct AddTradeView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(
-                                            (!priceString.isEmpty && !isValidPrice)
+                                            (!viewModel.priceString.isEmpty && !viewModel.isValidPrice)
                                                 ? AnyShapeStyle(.red)
                                                 : AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)),
                                             lineWidth: 1
@@ -77,7 +74,7 @@ struct AddTradeView: View {
                                 )
                                 .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                             
-                            if !priceString.isEmpty && !isValidPrice {
+                            if !viewModel.priceString.isEmpty && !viewModel.isValidPrice {
                                 Text("Please enter a valid number")
                                     .font(.caption)
                                     .foregroundColor(.red)
@@ -91,9 +88,7 @@ struct AddTradeView: View {
                     // --- "ADD TO WATCHLIST" BUTTON ---
                     // This is the big gradient button at the bottom
                     Button(action: {
-                        let trade = Trade(ticker: ticker.isEmpty ? "UNKNOWN" : ticker, status: .open)
-                        trade.entryPrice = Double(priceString)
-                        modelContext.insert(trade)
+                        viewModel.addTrade(context: modelContext)
                         dismiss()
                     }) {
                         Text("Open Trade")
@@ -102,14 +97,14 @@ struct AddTradeView: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(
-                                LinearGradient(colors: (ticker.isEmpty || !isValidPrice) ? [.gray, .gray] : [.blue, .purple], startPoint: .leading, endPoint: .trailing)
+                                LinearGradient(colors: !viewModel.isValidForm ? [.gray, .gray] : [.blue, .purple], startPoint: .leading, endPoint: .trailing)
                             )
                             .cornerRadius(16)
                             .shadow(color: .purple.opacity(0.3), radius: 10, x: 0, y: 5)
-                            .opacity((ticker.isEmpty || !isValidPrice) ? 0.5 : 1)
+                            .opacity(!viewModel.isValidForm ? 0.5 : 1)
                     }
                     .buttonStyle(.plain)
-                    .disabled(ticker.isEmpty || !isValidPrice)
+                    .disabled(!viewModel.isValidForm)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 20)
                 }

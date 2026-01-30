@@ -89,8 +89,6 @@ struct WatchlistView: View {
     }
 }
 
-// Renamed from TradeRowView to avoid confusion
-
 
 #Preview {
     WatchlistView()
