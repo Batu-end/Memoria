@@ -3,44 +3,122 @@
 //  Memoria
 //
 //  Created by Batu Demirtas on 1/29/26.
-//
+//  File responsible for adding new stocks to the watchlist.
 
 import SwiftUI
+import SwiftData
 
 struct AddTradeView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
     @State private var ticker = ""
-    @State private var price: Double?
+    @State private var priceString = ""
+    
+    // Validation Logic
+    private var isValidPrice: Bool {
+        return Double(priceString) != nil
+    }
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text("Trade Details")) {
-                    TextField("Ticker (e.g. AAPL)", text: $ticker)
-                        // .textInputAutocapitalization(.characters)
-                    
-                    TextField("Entry Price", value: $price, format: .number)
-                        // .keyboardType(.decimalPad)
-                }
+            ZStack {
+                // Dark Background
+                Color(red: 0.11, green: 0.11, blue: 0.12)
+                    .ignoresSafeArea()
                 
-                Section {
+                VStack(spacing: 24) {
+                    // --- CUSTOM INPUT FIELDS ---
+                    // This section creates the "Ticker" and "Price" boxes
+                    // --- CUSTOM INPUT FIELDS ---
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Ticker Field
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("TICKER")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.gray)
+                            
+                            TextField("Ticker", text: $ticker)
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .textFieldStyle(.plain)
+                                .padding()
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                                )
+                                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                        }
+                        
+                        // Price Field
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("ENTRY PRICE")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.gray)
+                            
+                            TextField("0.00", text: $priceString)
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .textFieldStyle(.plain)
+                                .padding()
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(
+                                            (!priceString.isEmpty && !isValidPrice)
+                                                ? AnyShapeStyle(.red)
+                                                : AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                                            lineWidth: 1
+                                        )
+                                )
+                                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                            
+                            if !priceString.isEmpty && !isValidPrice {
+                                Text("Please enter a valid number")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                    .padding(24)
+                    
+                    Spacer()
+                    
+                    // --- "ADD TO WATCHLIST" BUTTON ---
+                    // This is the big gradient button at the bottom
                     Button(action: {
-                        // TODO: Save Action
-                        print("Add trade: \(ticker) at \(String(describing: price))")
+                        let newTrade = Trade(ticker: ticker.isEmpty ? "UNKNOWN" : ticker, status: .watchlist)
+                        newTrade.entryPrice = Double(priceString)
+                        modelContext.insert(newTrade)
                         dismiss()
                     }) {
                         Text("Add to Watchlist")
+                            .font(.headline)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .foregroundColor(.blue)
+                            .padding()
+                            .background(
+                                LinearGradient(colors: (ticker.isEmpty || !isValidPrice) ? [.gray, .gray] : [.blue, .purple], startPoint: .leading, endPoint: .trailing)
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: .purple.opacity(0.3), radius: 10, x: 0, y: 5)
+                            .opacity((ticker.isEmpty || !isValidPrice) ? 0.5 : 1)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(ticker.isEmpty || !isValidPrice)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
                 }
             }
             .navigationTitle("New Trade")
-//            .navigationBarTitleDisplayMode(.inline)
+            // .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .foregroundStyle(.white)
                 }
             }
         }
@@ -49,4 +127,5 @@ struct AddTradeView: View {
 
 #Preview {
     AddTradeView()
+        .preferredColorScheme(.dark)
 }
