@@ -6,46 +6,77 @@
 //
 
 import SwiftUI
-
-// Mock Models
-// Mock Models
-struct MockTrade: Identifiable {
-    let id = UUID()
-    let ticker: String
-    let entryPrice: Double
-    let status: TradeStatus
-    let dateAdded: Date
-}
-
-
+import SwiftData
 
 struct DashboardView: View {
-    // Mock Data Source
-    private let trades: [MockTrade] = [
-        MockTrade(ticker: "AAPL", entryPrice: 150.0, status: .watchlist, dateAdded: Date()),
-        MockTrade(ticker: "TSLA", entryPrice: 200.0, status: .open, dateAdded: Date().addingTimeInterval(-86400)),
-        MockTrade(ticker: "NVDA", entryPrice: 400.0, status: .closed, dateAdded: Date().addingTimeInterval(-172800))
-    ]
+    // Live Data Source
+    @Query(sort: \Trade.dateAdded, order: .reverse) private var trades: [Trade]
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("Dashboard")
-                    .font(.largeTitle)
-                    .bold()
-                    .padding(.horizontal)
-                
-                // Summary Cards
-                HStack(spacing: 15) {
-                    SummaryCard(title: "Active Trades", value: "\(activeTradesCount)", color: .blue)
-                    SummaryCard(title: "Watchlist", value: "\(watchlistCount)", color: .purple)
+                HStack {
+                    Text("Dashboard")
+                        .font(.largeTitle)
+                        .bold()
+                    
+                    Spacer()
+                    
+                    // MARKET STATUS INDICATOR
+                    let status = MarketService.shared.currentStatus()
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(status == .open ? Color.green : (status == .weekend ? Color.orange : Color.gray))
+                            .frame(width: 8, height: 8)
+                            .shadow(color: (status == .open ? Color.green : Color.clear).opacity(0.5), radius: 5)
+                        
+                        Text(status.title)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+                    
+                    // WATCHLIST COUNT (Moved to Header)
+                    HStack(spacing: 6) {
+                        Image(systemName: "eye.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.purple)
+                        Text("\(watchlistCount)")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
                 }
                 .padding(.horizontal)
                 
+                // Summary Cards (New Layout)
                 HStack(spacing: 15) {
-                    SummaryCard(title: "Closed", value: "\(closedTradesCount)", color: .gray)
-                    // Just a placeholder for Win Rate for now
-                    SummaryCard(title: "Win Rate", value: "N/A", color: .green)
+                    // Total Equity (Placeholder)
+                    SummaryCard(title: "Total Equity", value: "$0.00", color: .blue)
+                    
+                    // Unrealized P/L (Placeholder)
+                    SummaryCard(title: "Unrealized P/L", value: "$0.00", color: .green)
+                }
+                .padding(.horizontal)
+                
+                // Row 2: Performance Metrics (Restored)
+                HStack(spacing: 15) {
+                    SummaryCard(title: "Active Trades", value: "\(activeTradesCount)", color: .purple)
+                    SummaryCard(title: "Win Rate", value: "N/A", color: .orange)
                 }
                 .padding(.horizontal)
                 
@@ -58,7 +89,7 @@ struct DashboardView: View {
                 if trades.isEmpty {
                     ContentUnavailableView("No activity yet", systemImage: "chart.bar.xaxis")
                 } else {
-                    ForEach(trades.sorted(by: { $0.dateAdded > $1.dateAdded }).prefix(5)) { trade in
+                    ForEach(trades.prefix(5)) { trade in
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(trade.ticker)
