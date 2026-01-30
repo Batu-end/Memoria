@@ -10,6 +10,7 @@ import SwiftUI
 // Renamed from TradeRowView to avoid confusion
 struct WatchlistRowView: View {
     let item: WatchlistItem
+    let deleteItem: () -> Void
     
     var body: some View {
         HStack {
@@ -40,6 +41,17 @@ struct WatchlistRowView: View {
                         .foregroundColor(.gray)
                 }
             }
+
+            // Add a "Delete" button (Trash Icon)
+            Button(action: { deleteItem() }) {
+                Image(systemName: "trash")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.red)
+                    .padding(6)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(16)
         .background(Color(red: 0.15, green: 0.15, blue: 0.16))
