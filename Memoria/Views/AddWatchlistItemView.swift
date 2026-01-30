@@ -1,14 +1,14 @@
 //
-//  AddTradeView.swift
+//  AddWatchlistItemView.swift
 //  Memoria
 //
-//  Created by Batu Demirtas on 1/29/26.
-//  File responsible for adding new stocks to the watchlist.
+//  Created by Batu Demirtas on 1/30/26.
+//
 
 import SwiftUI
 import SwiftData
 
-struct AddTradeView: View {
+struct AddWatchlistItemView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
@@ -17,7 +17,7 @@ struct AddTradeView: View {
     
     // Validation Logic
     private var isValidPrice: Bool {
-        return Double(priceString) != nil
+        return priceString.isEmpty || Double(priceString) != nil // Optional, so empty is valid
     }
     
     var body: some View {
@@ -28,10 +28,6 @@ struct AddTradeView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 24) {
-                    
-                    // --- CUSTOM INPUT FIELDS ---
-                    // This section creates the "Ticker" and "Price" boxes
-                    // --- CUSTOM INPUT FIELDS ---
                     VStack(alignment: .leading, spacing: 20) {
                         // Ticker Field
                         VStack(alignment: .leading, spacing: 10) {
@@ -40,7 +36,7 @@ struct AddTradeView: View {
                                 .fontWeight(.bold)
                                 .foregroundStyle(.gray)
                             
-                            TextField("Ticker", text: $ticker)
+                            TextField("e.g. AAPL", text: $ticker)
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .textFieldStyle(.plain)
                                 .padding()
@@ -50,12 +46,11 @@ struct AddTradeView: View {
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
                                 )
-                                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                         }
                         
-                        // Price Field
+                        // Target Price Field
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("ENTRY PRICE")
+                            Text("TARGET PRICE (Optional)")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundStyle(.gray)
@@ -69,15 +64,14 @@ struct AddTradeView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(
-                                            (!priceString.isEmpty && !isValidPrice)
+                                            (!isValidPrice)
                                                 ? AnyShapeStyle(.red)
                                                 : AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)),
                                             lineWidth: 1
                                         )
                                 )
-                                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                             
-                            if !priceString.isEmpty && !isValidPrice {
+                            if !isValidPrice {
                                 Text("Please enter a valid number")
                                     .font(.caption)
                                     .foregroundColor(.red)
@@ -88,15 +82,16 @@ struct AddTradeView: View {
                     
                     Spacer()
                     
-                    // --- "ADD TO WATCHLIST" BUTTON ---
-                    // This is the big gradient button at the bottom
+                    // --- "ADD" BUTTON ---
                     Button(action: {
-                        let trade = Trade(ticker: ticker.isEmpty ? "UNKNOWN" : ticker, status: .open)
-                        trade.entryPrice = Double(priceString)
-                        modelContext.insert(trade)
+                        let item = WatchlistItem(ticker: ticker.isEmpty ? "UNKNOWN" : ticker)
+                        if let price = Double(priceString) {
+                            item.priceAtAdd = price
+                        }
+                        modelContext.insert(item)
                         dismiss()
                     }) {
-                        Text("Open Trade")
+                        Text("Track Stock")
                             .font(.headline)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
@@ -114,8 +109,7 @@ struct AddTradeView: View {
                     .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("New Trade")
-            // .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Add to Watchlist")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -124,9 +118,4 @@ struct AddTradeView: View {
             }
         }
     }
-}
-
-#Preview {
-    AddTradeView()
-        .preferredColorScheme(.dark)
 }
