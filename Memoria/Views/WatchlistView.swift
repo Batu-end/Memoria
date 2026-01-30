@@ -15,6 +15,10 @@ struct WatchlistView: View {
     private var watchlistItems: [WatchlistItem]
     
     @State private var showAddTrade = false
+    // Change the function to accept the Item, not the ID
+    private func deleteItem(_ item: WatchlistItem) {
+        modelContext.delete(item)
+    }
     
     var body: some View {
         NavigationStack {
@@ -40,7 +44,7 @@ struct WatchlistView: View {
                 } else {
                     List {
                         ForEach(watchlistItems) { item in
-                            WatchlistRowView(item: item)
+                            WatchlistRowView(item: item, deleteItem: { deleteItem(item) })
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                         }

@@ -24,6 +24,24 @@ final class Trade {
         get { TradeStatus(rawValue: statusRaw) ?? .open }
         set { statusRaw = newValue.rawValue }
     }
+    
+    // MARK: - Computed Financials
+    
+    /// Profit or Loss in dollars.
+    /// Requires both entry and exit price. Defaults to nil if trade is open or data missing.
+    /// Currently assumes 1 unit/share for simplicity until Quantity is added.
+    var pnl: Double? {
+        guard let entry = entryPrice, let exit = exitPrice else { return nil }
+        return exit - entry
+    }
+    
+    /// R-Multiple (Return on Risk).
+    /// Since we don't have a Stop Loss yet, we will use % Return as a proxy for now.
+    /// Formula: (Exit - Entry) / Entry * 100
+    var rMultiple: Double? {
+        guard let entry = entryPrice, let exit = exitPrice, entry != 0 else { return nil }
+        return ((exit - entry) / entry) * 100
+    }
 }
 
 // Global Enum (Needs to be Codable if part of @Model, but usually RawRepresentable String is easiest for simple storage)
