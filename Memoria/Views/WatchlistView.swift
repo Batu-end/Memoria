@@ -29,13 +29,11 @@ struct WatchlistView: View {
         NavigationStack {
             ZStack {
                 // Background gradient
+                // Background gradient
                 LinearGradient(
-                    colors: [
-                        Color(red: 0.12, green: 0.12, blue: 0.13),
-                        Color(red: 0.07, green: 0.07, blue: 0.08)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
                 
@@ -87,30 +85,19 @@ struct WatchlistView: View {
                 ToolbarItem(placement: .automatic) {
                     Button(action: { Task { await refreshQuotes() } }) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.white)
                             .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                             .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
                     }
-                    .buttonStyle(.plain)
+                    .help("Refresh Prices")
                     .disabled(isRefreshing)
                 }
                 
                 // Add button
-                ToolbarItem(placement: .automatic) {
+                ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddItem = true }) {
                         Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(8)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-                            )
                     }
-                    .buttonStyle(.plain)
+                    .help("Add to Watchlist")
                 }
             }
             .sheet(isPresented: $showAddItem) {
