@@ -12,13 +12,8 @@ struct AddWatchlistItemView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var ticker = ""
-    @State private var priceString = ""
     @State private var isLookingUp = false
     @State private var lookedUpPrice: Double?
-    
-    private var isValidPrice: Bool {
-        priceString.isEmpty || Double(priceString) != nil
-    }
     
     var body: some View {
         NavigationStack {
@@ -53,23 +48,7 @@ struct AddWatchlistItemView: View {
                         Text("Press Return to look up the current price")
                     }
                 }
-                
-                Section {
-                    HStack {
-                        Text("$")
-                            .foregroundStyle(.secondary)
-                        TextField("Optional", text: $priceString)
-                            .font(.system(.body, design: .monospaced))
-                    }
-                    
-                    if !priceString.isEmpty && !isValidPrice {
-                        Text("Enter a valid number")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                } header: {
-                    Label("Target Price", systemImage: "target")
-                }
+
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -83,20 +62,23 @@ struct AddWatchlistItemView: View {
                     Button("Track") {
                         addItem()
                     }
-                    .disabled(ticker.isEmpty || !isValidPrice)
+                    .disabled(ticker.isEmpty)
                     .keyboardShortcut(.return, modifiers: .command)
                 }
             }
         }
-        .frame(minWidth: 380, minHeight: 280)
+        .frame(minWidth: 360, minHeight: 180)
+        .onAppear {
+            ticker = ""
+            isLookingUp = false
+            lookedUpPrice = nil
+        }
     }
     
     private func addItem() {
         let item = WatchlistItem(ticker: ticker.uppercased())
         
-        if let price = Double(priceString) {
-            item.priceAtAdd = price
-        } else if let looked = lookedUpPrice {
+        if let looked = lookedUpPrice {
             item.priceAtAdd = looked
         }
         
