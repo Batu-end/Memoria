@@ -11,6 +11,13 @@ struct WatchlistRowView: View {
     let item: WatchlistItem
     let deleteItem: () -> Void
     
+    private var strokeColor: Color {
+        if let changeSince = item.changeSinceAdded {
+            return changeSince >= 0 ? .green : .red
+        }
+        return .purple
+    }
+    
     var body: some View {
         HStack(spacing: 12) {
             // Left: Ticker + Date Added
@@ -89,11 +96,12 @@ struct WatchlistRowView: View {
             .buttonStyle(.plain)
         }
         .padding(14)
-        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+        .background(.ultraThinMaterial)
         .cornerRadius(12)
+        .shadow(color: strokeColor.opacity(0.1), radius: 5, x: 0, y: 5)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(strokeColor.opacity(0.2), lineWidth: 1)
         )
     }
 }
