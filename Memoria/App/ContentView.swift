@@ -10,22 +10,21 @@ import SwiftData
 
 struct ContentView: View {
     var body: some View {
-        // Tab View at the top
         TabView {
             DashboardView()
                 .tabItem {
                     Label("Dashboard", systemImage: "square.grid.2x2")
                 }
             
+            TradesListView()
+                .tabItem {
+                    Label("Trades", systemImage: "chart.bar.doc.horizontal")
+                }
+            
             WatchlistView()
                 .tabItem {
                     Label("Watchlist", systemImage: "list.bullet")
                 }
-            
-            // CalendarView()
-            //     .tabItem {
-            //         Label("Calendar", systemImage: "calendar")
-            //     }
         }
     }
 }
