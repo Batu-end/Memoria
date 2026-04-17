@@ -14,7 +14,7 @@ class AddTradeViewModel {
     // MARK: - Properties
     var ticker: String = ""
     var priceString: String = ""
-    var quantityString: String = ""
+    var capitalString: String = ""
     var side: TradeSide = .long
     var assetType: AssetType = .stock
     var selectedStrategy: TradeStrategy? = nil
@@ -29,8 +29,8 @@ class AddTradeViewModel {
         priceString.isEmpty || Double(priceString) != nil
     }
     
-    var isValidQuantity: Bool {
-        quantityString.isEmpty || Double(quantityString) != nil
+    var isValidCapital: Bool {
+        capitalString.isEmpty || Double(capitalString) != nil
     }
     
     var isValidStopLoss: Bool {
@@ -42,7 +42,7 @@ class AddTradeViewModel {
     }
     
     var isValidForm: Bool {
-        !ticker.isEmpty && !priceString.isEmpty && isValidPrice && isValidQuantity && isValidStopLoss && isValidTakeProfit
+        !ticker.isEmpty && !priceString.isEmpty && isValidPrice && isValidCapital && isValidStopLoss && isValidTakeProfit
     }
     
     /// The resolved strategy string — uses custom if "Other" is selected
@@ -58,8 +58,14 @@ class AddTradeViewModel {
     
     func addTrade(context: ModelContext) {
         let trade = Trade(ticker: ticker.uppercased(), status: .open, side: side, assetType: assetType)
-        trade.entryPrice = Double(priceString)
-        trade.quantity = Double(quantityString)
+        let price = Double(priceString)
+        let capital = Double(capitalString)
+        
+        trade.entryPrice = price
+        if let p = price, let c = capital, p > 0 {
+            trade.quantity = c / p
+        }
+        
         trade.stopLoss = Double(stopLossString)
         trade.takeProfit = Double(takeProfitString)
         trade.strategy = resolvedStrategy

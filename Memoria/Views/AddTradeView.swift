@@ -77,23 +77,27 @@ struct AddTradeView: View {
                         Divider().frame(height: 40)
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Shares")
+                            Text("Capital Spent")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            TextField("0", text: $viewModel.quantityString)
-                                .font(.system(.title3, design: .monospaced))
+                            HStack(spacing: 4) {
+                                Text("$")
+                                    .foregroundStyle(.secondary)
+                                TextField("0.00", text: $viewModel.capitalString)
+                                    .font(.system(.title3, design: .monospaced))
+                            }
                         }
                     }
                     
-                    // Position Size Preview
+                    // Estimated Shares Preview
                     if let price = Double(viewModel.priceString),
-                       let qty = Double(viewModel.quantityString),
-                       price > 0 && qty > 0 {
+                       let capital = Double(viewModel.capitalString),
+                       price > 0 && capital > 0 {
                         HStack {
-                            Text("Position Size")
+                            Text("Estimated Shares")
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Text(price * qty, format: .currency(code: "USD"))
+                            Text("\(capital / price, specifier: "%.4f") shares")
                                 .font(.system(.body, design: .rounded))
                                 .fontWeight(.medium)
                                 .foregroundStyle(.blue)
