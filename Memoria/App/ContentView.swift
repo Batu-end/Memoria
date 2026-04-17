@@ -25,6 +25,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Watchlist", systemImage: "list.bullet")
                 }
+            
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
         }
     }
 }
