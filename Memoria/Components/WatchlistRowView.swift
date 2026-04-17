@@ -70,19 +70,7 @@ struct WatchlistRowView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            
-            // Change since added (if meaningful)
-            if let changeSince = item.changeSinceAdded {
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text("Since add")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.secondary)
-                    Text("\(changeSince >= 0 ? "+" : "")\(changeSince, specifier: "%.1f")%")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(changeSince >= 0 ? Color.green : Color.red)
-                }
-                .padding(.leading, 4)
-            }
+
 
             // Delete button
             Button(action: deleteItem) {
