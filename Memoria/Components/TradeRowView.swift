@@ -10,6 +10,16 @@ import SwiftUI
 struct TradeRowView: View {
     let trade: Trade
     
+    private var strokeColor: Color {
+        if trade.status == .closed {
+            if let pnl = trade.pnl {
+                return pnl >= 0 ? .green : .red
+            }
+            return .purple
+        }
+        return .blue
+    }
+    
     var body: some View {
         HStack(spacing: 12) {
             // Left: Ticker + Side Badge
@@ -99,11 +109,12 @@ struct TradeRowView: View {
             }
         }
         .padding(14)
-        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+        .background(.ultraThinMaterial)
         .cornerRadius(12)
+        .shadow(color: strokeColor.opacity(0.1), radius: 5, x: 0, y: 5)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(strokeColor.opacity(0.2), lineWidth: 1)
         )
     }
 }
