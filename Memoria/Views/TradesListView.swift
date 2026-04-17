@@ -69,13 +69,11 @@ struct TradesListView: View {
         NavigationStack {
             ZStack {
                 // Background
+                // Background
                 LinearGradient(
-                    colors: [
-                        Color(red: 0.12, green: 0.12, blue: 0.13),
-                        Color(red: 0.07, green: 0.07, blue: 0.08)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
                 
@@ -101,20 +99,11 @@ struct TradesListView: View {
             }
             .navigationTitle("Trades")
             .toolbar {
-                ToolbarItem(placement: .automatic) {
+                ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddTrade = true }) {
                         Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(8)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-                            )
                     }
-                    .buttonStyle(.plain)
+                    .help("Add Trade")
                 }
             }
             .sheet(isPresented: $showAddTrade) {
