@@ -3,19 +3,24 @@
 //  Memoria
 //
 //  Created by Batu Demirtas on 1/29/26.
-//
+//  Updated with live price refresh.
 
 import SwiftUI
 import SwiftData
+import Combine
 
-// Visualization
 struct WatchlistView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \WatchlistItem.dateAdded, order: .reverse)
     private var watchlistItems: [WatchlistItem]
     
-    @State private var showAddTrade = false
-    // Change the function to accept the Item, not the ID
+    @State private var showAddItem = false
+    @State private var isRefreshing = false
+    @State private var lastRefreshTime: Date?
+    
+    // Auto-refresh timer (fires every 30 seconds)
+    private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+    
     private func deleteItem(_ item: WatchlistItem) {
         modelContext.delete(item)
     }
@@ -23,77 +28,135 @@ struct WatchlistView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Tahoe-style "Glass" Background (Subtle Dark)
+                // Background gradient
                 LinearGradient(
                     colors: [
-                        Color(red: 0.12, green: 0.12, blue: 0.13), // Soft Charcoal
-                        Color(red: 0.07, green: 0.07, blue: 0.08)  // Deep Dark Gray
+                        Color(red: 0.12, green: 0.12, blue: 0.13),
+                        Color(red: 0.07, green: 0.07, blue: 0.08)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
                 
-                // Live Data List
                 if watchlistItems.isEmpty {
                     ContentUnavailableView(
                         "No items in Watchlist",
                         systemImage: "eye.slash",
-                        description: Text("Add a stock manually to track it.")
+                        description: Text("Add a stock to start tracking live prices.")
                     )
                 } else {
-                    List {
-                        ForEach(watchlistItems) { item in
-                            WatchlistRowView(item: item, deleteItem: { deleteItem(item) })
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
+                    ScrollView {
+                        LazyVStack(spacing: 8) {
+                            // Refresh status bar
+                            if let lastRefresh = lastRefreshTime {
+                                HStack {
+                                    if isRefreshing {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                            .frame(width: 12, height: 12)
+                                        Text("Refreshing...")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        Image(systemName: "clock")
+                                            .font(.system(size: 9))
+                                            .foregroundStyle(.secondary)
+                                        Text("Updated \(lastRefresh, format: .dateTime.hour().minute())")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+                                .padding(.top, 4)
+                            }
+                            
+                            ForEach(watchlistItems) { item in
+                                WatchlistRowView(item: item, deleteItem: { deleteItem(item) })
+                            }
                         }
-                        .onDelete(perform: deleteItems)
-                        .listStyle(.plain)
-                        .contentMargins(.top, 60, for: .scrollContent) // Push content down
+                        .padding(.horizontal)
+                        .padding(.top, 8)
                     }
-                    .scrollContentBackground(.hidden)
-                } // Crucial for seeing the gradient behind the list
+                }
             }
             .navigationTitle("Watchlist")
-            // --- TOP BAR BUTTONS ---
             .toolbar {
+                // Refresh button
                 ToolbarItem(placement: .automatic) {
-                    // This is the "Add Icon" logic
-                    Button(action: { showAddTrade = true }) {
+                    Button(action: { Task { await refreshQuotes() } }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.white)
+                            .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                            .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isRefreshing)
+                }
+                
+                // Add button
+                ToolbarItem(placement: .automatic) {
+                    Button(action: { showAddItem = true }) {
                         Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold)) // Slightly smaller for toolbar
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(.white)
                             .padding(8)
-                            .background(.ultraThinMaterial) // Glass background
-                            .clipShape(RoundedRectangle(cornerRadius: 8)) // Tahoe squaricle
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
                             )
                     }
-                    .buttonStyle(.plain) // Crucial for removing system oval
+                    .buttonStyle(.plain)
                 }
             }
-            // --- POPUP SHEET LOGIC ---
-            // This tells SwiftUI: "When 'showAddTrade' is true, popup the AddWatchlistItemView"
-            .sheet(isPresented: $showAddTrade) {
+            .sheet(isPresented: $showAddItem) {
                 AddWatchlistItemView()
-                    .presentationDetents([.medium]) // Makes it take up half the screen
+                    .onDisappear {
+                        // Refresh quotes after adding a new item
+                        Task { await refreshQuotes() }
+                    }
+            }
+            .task {
+                // Fetch quotes when view first appears
+                await refreshQuotes()
+            }
+            .onReceive(refreshTimer) { _ in
+                // Auto-refresh only during market hours
+                let status = MarketService.shared.currentStatus()
+                if status == .open {
+                    Task { await refreshQuotes() }
+                }
             }
         }
     }
     
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(watchlistItems[index])
+    // MARK: - Data Fetching
+    
+    private func refreshQuotes() async {
+        guard !watchlistItems.isEmpty else { return }
+        
+        isRefreshing = true
+        
+        let symbols = watchlistItems.map { $0.ticker }
+        let quotes = await StockQuoteService.shared.fetchQuotes(for: symbols)
+        
+        // Apply quotes to watchlist items
+        for item in watchlistItems {
+            if let quote = quotes[item.ticker.uppercased()] {
+                item.updateQuote(quote)
             }
         }
+        
+        lastRefreshTime = Date()
+        isRefreshing = false
     }
 }
 
-
 #Preview {
     WatchlistView()
+        .preferredColorScheme(.dark)
 }
