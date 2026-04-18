@@ -8,13 +8,17 @@
 import Foundation
 
 enum MarketStatus {
+    case preMarket
     case open
+    case postMarket
     case closed
     case weekend
     
     var title: String {
         switch self {
+        case .preMarket: return "Pre-Market"
         case .open: return "Market Open"
+        case .postMarket: return "Post-Market"
         case .closed: return "Market Closed"
         case .weekend: return "Weekend"
         }
@@ -22,7 +26,9 @@ enum MarketStatus {
     
     var color: String { // Returning system image colors logic could go here, but keeping simple
         switch self {
+        case .preMarket: return "yellow"
         case .open: return "green"
+        case .postMarket: return "yellow"
         case .closed: return "gray"
         case .weekend: return "orange"
         }
@@ -52,11 +58,17 @@ class MarketService {
         // Convert to minutes from midnight for easy comparison
         let currentMinutes = hour * 60 + minute
         
-        let openMinutes = 9 * 60 + 30  // 9:30 AM = 570
-        let closeMinutes = 16 * 60     // 4:00 PM = 960
+        let preMarketStart = 4 * 60      // 4:00 AM = 240
+        let openMinutes = 9 * 60 + 30    // 9:30 AM = 570
+        let closeMinutes = 16 * 60       // 4:00 PM = 960
+        let postMarketEnd = 20 * 60      // 8:00 PM = 1200
         
-        if currentMinutes >= openMinutes && currentMinutes < closeMinutes {
+        if currentMinutes >= preMarketStart && currentMinutes < openMinutes {
+            return .preMarket
+        } else if currentMinutes >= openMinutes && currentMinutes < closeMinutes {
             return .open
+        } else if currentMinutes >= closeMinutes && currentMinutes < postMarketEnd {
+            return .postMarket
         } else {
             return .closed
         }
