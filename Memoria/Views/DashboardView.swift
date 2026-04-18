@@ -39,6 +39,8 @@ struct DashboardView: View {
     @State private var spyCurrent: Double?
     @State private var spyHistoricalData: [HistoricalQuote] = []
     
+    @State private var marketStatus: MarketStatus = MarketService.shared.currentStatus()
+    
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -61,7 +63,12 @@ struct DashboardView: View {
             await fetchSpyData()
         }
         .onReceive(refreshTimer) { _ in
-            if MarketService.shared.currentStatus() == .open {
+            let newStatus = MarketService.shared.currentStatus()
+            if marketStatus != newStatus {
+                marketStatus = newStatus
+            }
+            
+            if marketStatus == .open || marketStatus == .preMarket || marketStatus == .postMarket {
                 Task {
                     await fetchLiveQuotes()
                     await fetchSpyData()
@@ -88,14 +95,13 @@ struct DashboardView: View {
                 .padding(.bottom, 4)
                 
             // Market Status Indicator
-            let status = MarketService.shared.currentStatus()
             HStack(spacing: 6) {
                 Circle()
-                    .fill(status == .open ? Color.green : (status == .weekend ? Color.orange : Color.gray))
+                    .fill(marketStatus == .open ? Color.green : (marketStatus == .preMarket || marketStatus == .postMarket ? Color.yellow : (marketStatus == .weekend ? Color.orange : Color.gray)))
                     .frame(width: 8, height: 8)
-                    .shadow(color: (status == .open ? Color.green : Color.clear).opacity(0.5), radius: 5)
+                    .shadow(color: (marketStatus == .open ? Color.green : (marketStatus == .preMarket || marketStatus == .postMarket ? Color.yellow : Color.clear)).opacity(0.5), radius: 5)
                 
-                Text(status.title)
+                Text(marketStatus.title)
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
