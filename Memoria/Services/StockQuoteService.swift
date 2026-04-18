@@ -51,6 +51,47 @@ class StockQuoteService {
         return await fetchSingleQuote(symbol: symbol)
     }
     
+    
+    /// Fetches the closing price of a symbol on or immediately after a specific date.
+    /// Useful for calculating benchmark returns (e.g., SPY price when the portfolio started).
+    func fetchBaselinePrice(symbol: String, startDate: Date) async -> Double? {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: startDate)
+        // Fetch a 7-day window to guarantee we hit a trading day (skipping weekends/holidays)
+        guard let endOfDay = calendar.date(byAdding: .day, value: 7, to: startOfDay) else { return nil }
+        
+        let p1 = Int(startOfDay.timeIntervalSince1970)
+        let p2 = Int(endOfDay.timeIntervalSince1970)
+        
+        let urlString = "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1d&period1=\(p1)&period2=\(p2)"
+        
+        guard let url = URL(string: urlString) else { return nil }
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return nil }
+            
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let chart = json["chart"] as? [String: Any],
+                  let results = chart["result"] as? [[String: Any]],
+                  let result = results.first,
+                  let indicators = result["indicators"] as? [String: Any],
+                  let quote = indicators["quote"] as? [[String: Any]],
+                  let firstQuote = quote.first,
+                  let closes = firstQuote["close"] as? [Double?] else {
+                return nil
+            }
+            
+            // Return the first valid closing price in the window
+            return closes.compactMap { $0 }.first
+        } catch {
+            return nil
+        }
+    }
+    
     // MARK: - Internal
     
     private func fetchSingleQuote(symbol: String) async -> StockQuote? {
