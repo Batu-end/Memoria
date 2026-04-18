@@ -168,6 +168,21 @@ struct DashboardView: View {
                     color: avgWin > abs(avgLoss) ? .green : .red
                 )
             }
+            
+            // Third Row of Advanced Metrics
+            HStack(spacing: 15) {
+                SummaryCard(
+                    title: "Avg Hold Time",
+                    value: avgHoldTimeFormatted,
+                    color: .cyan
+                )
+                
+                SummaryCard(
+                    title: "Max Drawdown",
+                    value: String(format: "%.1f%%", maxDrawdownPercent),
+                    color: maxDrawdownPercent < 5.0 ? .green : .red
+                )
+            }
         }
         .padding(.horizontal)
     }
@@ -549,6 +564,50 @@ struct DashboardView: View {
         let losses = closed.compactMap { $0.pnl }.filter { $0 < 0 }
         guard !losses.isEmpty else { return 0 }
         return losses.reduce(0, +) / Double(losses.count)
+    }
+    
+    private var avgHoldTimeFormatted: String {
+        let closed = trades.filter { $0.status == .closed && $0.dateClosed != nil }
+        guard !closed.isEmpty else { return "0d 0h" }
+        
+        let totalTimeInterval = closed.reduce(0.0) { result, trade in
+            result + (trade.dateClosed!.timeIntervalSince(trade.dateAdded))
+        }
+        
+        let avgSeconds = totalTimeInterval / Double(closed.count)
+        return formatTimeInterval(avgSeconds)
+    }
+    
+    private func formatTimeInterval(_ seconds: Double) -> String {
+        let days = Int(seconds) / 86400
+        let hours = (Int(seconds) % 86400) / 3600
+        let minutes = (Int(seconds) % 3600) / 60
+        
+        if days > 0 {
+            return "\(days)d \(hours)h"
+        } else if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
+    }
+    
+    private var maxDrawdownPercent: Double {
+        let curve = equityCurveData
+        guard !curve.isEmpty else { return 0 }
+        var peak = curve.first!.balance
+        var maxDD = 0.0
+        
+        for point in curve {
+            if point.balance > peak {
+                peak = point.balance
+            }
+            let dd = (peak - point.balance) / peak * 100
+            if dd > maxDD {
+                maxDD = dd
+            }
+        }
+        return maxDD
     }
     
     private func formatPnl(_ value: Double) -> String {
