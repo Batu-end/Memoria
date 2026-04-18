@@ -37,6 +37,7 @@ struct DashboardView: View {
     @State private var benchmarkTimeframe: BenchmarkTimeframe = .ytd
     @State private var spyBaseline: Double?
     @State private var spyCurrent: Double?
+    @State private var spyHistoricalData: [HistoricalQuote] = []
     
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     
@@ -275,13 +276,70 @@ struct DashboardView: View {
                     }
                 }
                 
-                Picker("Benchmark Timeframe", selection: $benchmarkTimeframe) {
+                Picker("", selection: $benchmarkTimeframe) {
                     ForEach(BenchmarkTimeframe.allCases, id: \.self) { frame in
                         Text(frame.rawValue).tag(frame)
                     }
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 180)
+                
+                if portfolioRelativeCurve.count >= 2 {
+                    Chart {
+                        if let firstPort = portfolioRelativeCurve.first?.balance, firstPort > 0 {
+                            ForEach(portfolioRelativeCurve) { point in
+                                let ptRet = ((point.balance - firstPort) / firstPort) * 100
+                                LineMark(
+                                    x: .value("Time", point.date),
+                                    y: .value("Return", ptRet),
+                                    series: .value("Type", "Portfolio")
+                                )
+                                .interpolationMethod(.monotone)
+                                .foregroundStyle(isTimeframePortfolioPositive ? Color.green : Color.red)
+                                .lineStyle(StrokeStyle(lineWidth: 3))
+                            }
+                        }
+                        
+                        if let firstSpy = spyHistoricalData.first?.close, firstSpy > 0 {
+                            ForEach(spyHistoricalData) { point in
+                                let spyRet = ((point.close - firstSpy) / firstSpy) * 100
+                                LineMark(
+                                    x: .value("Time", point.date),
+                                    y: .value("Return", spyRet),
+                                    series: .value("Type", "SPY")
+                                )
+                                .interpolationMethod(.monotone)
+                                .foregroundStyle(Color.purple)
+                                .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
+                            }
+                        }
+                    }
+                    .chartYScale(domain: relativeYDomain)
+                    .chartXAxis { AxisMarks(preset: .aligned, position: .bottom) }
+                    .chartYAxis {
+                        AxisMarks(position: .leading) { value in
+                            AxisValueLabel {
+                                if let d = value.as(Double.self) {
+                                    Text("\(d, specifier: "%.1f")%")
+                                }
+                            }
+                            AxisGridLine()
+                        }
+                    }
+                    .frame(height: 180)
+                    .padding(.top, 8)
+                    
+                    HStack(spacing: 20) {
+                        HStack(spacing: 4) {
+                            Circle().fill(isTimeframePortfolioPositive ? Color.green : Color.red).frame(width: 8, height: 8)
+                            Text("Portfolio").font(.caption).foregroundStyle(.secondary)
+                        }
+                        HStack(spacing: 4) {
+                            Rectangle().fill(Color.purple).frame(width: 12, height: 2)
+                            Text("S&P 500").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
             .frame(maxWidth: .infinity)
             .padding()
@@ -323,6 +381,10 @@ struct DashboardView: View {
         if let baseline = await StockQuoteService.shared.fetchBaselinePrice(symbol: "SPY", startDate: startDate) {
             spyBaseline = baseline
         }
+        
+        if let series = await StockQuoteService.shared.fetchHistoricalSeries(symbol: "SPY", startDate: startDate) {
+            spyHistoricalData = series
+        }
     }
     
     // MARK: - Computed Properties (Live Stats)
@@ -355,6 +417,66 @@ struct DashboardView: View {
         points.append(EquityDataPoint(date: Date(), balance: currentBalance))
         
         return points
+    }
+    
+    // MARK: - Relative Performance Graph Logic
+    
+    private var isTimeframePortfolioPositive: Bool {
+        guard let first = portfolioRelativeCurve.first?.balance else { return false }
+        return currentBalance >= first
+    }
+    
+    private func getBalance(on date: Date) -> Double {
+        var runningBalance = startingBalance
+        let closedBeforeDate = trades.filter { $0.status == .closed && $0.pnl != nil }.filter { 
+            ($0.dateClosed ?? $0.dateAdded) < date 
+        }
+        for trade in closedBeforeDate {
+            runningBalance += trade.pnl ?? 0
+        }
+        return runningBalance
+    }
+    
+    private var portfolioRelativeCurve: [EquityDataPoint] {
+        let startDate: Date
+        if benchmarkTimeframe == .ytd {
+            startDate = Calendar.current.date(from: DateComponents(year: Calendar.current.component(.year, from: Date()), month: 1, day: 1))!
+        } else {
+            startDate = trades.last?.dateAdded ?? Date()
+        }
+        
+        let baselineValue = getBalance(on: startDate)
+        var points: [EquityDataPoint] = [EquityDataPoint(date: startDate, balance: baselineValue)]
+        
+        let validTrades = trades.filter { $0.status == .closed && $0.pnl != nil }.sorted {
+            ($0.dateClosed ?? $0.dateAdded) < ($1.dateClosed ?? $1.dateAdded)
+        }.filter { ($0.dateClosed ?? $0.dateAdded) >= startDate }
+        
+        var runningBalance = baselineValue
+        for trade in validTrades {
+            runningBalance += trade.pnl ?? 0
+            let date = trade.dateClosed ?? trade.dateAdded
+            points.append(EquityDataPoint(date: date, balance: runningBalance))
+        }
+        
+        points.append(EquityDataPoint(date: Date(), balance: currentBalance))
+        return points
+    }
+    
+    private var relativeYDomain: ClosedRange<Double> {
+        let curve = portfolioRelativeCurve
+        guard let firstPort = curve.first?.balance, firstPort > 0 else { return -5...5 }
+        let portReturns = curve.map { (($0.balance - firstPort) / firstPort) * 100 }
+        
+        guard let firstSpy = spyHistoricalData.first?.close, firstSpy > 0 else { return -5...5 }
+        let spyReturns = spyHistoricalData.map { (($0.close - firstSpy) / firstSpy) * 100 }
+        
+        let allReturns = portReturns + spyReturns
+        guard !allReturns.isEmpty else { return -5...5 }
+        let minR = (allReturns.min() ?? 0) - 2
+        let maxR = (allReturns.max() ?? 0) + 2
+        guard maxR > minR else { return (minR - 5)...(maxR + 5) }
+        return minR...maxR
     }
     
     private var totalFloatingPnl: Double {
