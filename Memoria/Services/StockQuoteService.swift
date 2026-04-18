@@ -17,6 +17,12 @@ struct StockQuote {
     let changePercent: Double
 }
 
+struct HistoricalQuote: Identifiable {
+    let id = UUID()
+    let date: Date
+    let close: Double
+}
+
 /// Service responsible for fetching live stock data
 class StockQuoteService {
     static let shared = StockQuoteService()
@@ -87,6 +93,52 @@ class StockQuoteService {
             
             // Return the first valid closing price in the window
             return closes.compactMap { $0 }.first
+        } catch {
+            return nil
+        }
+    }
+    
+    /// Fetches a historical series of closing prices from the start date to today.
+    func fetchHistoricalSeries(symbol: String, startDate: Date) async -> [HistoricalQuote]? {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: startDate)
+        // Ensure we request up to tomorrow to capture today's close if available
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        
+        let p1 = Int(startOfDay.timeIntervalSince1970)
+        let p2 = Int(endOfDay.timeIntervalSince1970)
+        
+        let urlString = "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1d&period1=\(p1)&period2=\(p2)"
+        
+        guard let url = URL(string: urlString) else { return nil }
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return nil }
+            
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let chart = json["chart"] as? [String: Any],
+                  let results = chart["result"] as? [[String: Any]],
+                  let result = results.first,
+                  let timestamps = result["timestamp"] as? [Int],
+                  let indicators = result["indicators"] as? [String: Any],
+                  let quote = indicators["quote"] as? [[String: Any]],
+                  let firstQuote = quote.first,
+                  let closes = firstQuote["close"] as? [Double?] else {
+                return nil
+            }
+            
+            var series: [HistoricalQuote] = []
+            for (i, ts) in timestamps.enumerated() {
+                if i < closes.count, let close = closes[i] {
+                    let date = Date(timeIntervalSince1970: TimeInterval(ts))
+                    series.append(HistoricalQuote(date: date, close: close))
+                }
+            }
+            return series
         } catch {
             return nil
         }
