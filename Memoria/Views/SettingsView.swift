@@ -13,7 +13,7 @@ struct SettingsView: View {
     @Query private var trades: [Trade]
     @Query private var watchlistItems: [WatchlistItem]
     
-    @AppStorage("startingBalance") private var startingBalance: Double = 1600.0
+    @AppStorage("startingBalance") private var startingBalance: Double = 0.0
     
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
