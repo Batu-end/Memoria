@@ -25,7 +25,12 @@ struct StrategyStat: Identifiable {
     }
 }
 
-struct AnalyticsView: View {
+struct AnalyticsView: View, Equatable {
+    static func == (lhs: AnalyticsView, rhs: AnalyticsView) -> Bool {
+        lhs.activeTab == rhs.activeTab
+    }
+    
+    let activeTab: Tab?
     // Note: To bypass SwiftData Predicate limits, we bring in all closed trades and filter down.
     @Query(filter: #Predicate<Trade> { $0.statusRaw == "Closed" }) private var closedTrades: [Trade]
     
@@ -103,6 +108,7 @@ struct AnalyticsView: View {
                         }
                     }
                     .padding(.vertical)
+                    .drawingGroup() // Metal Acceleration
                 }
             }
         }
@@ -149,6 +155,6 @@ struct AnalyticsView: View {
 }
 
 #Preview {
-    AnalyticsView()
+    AnalyticsView(activeTab: .analytics)
         .preferredColorScheme(.dark)
 }

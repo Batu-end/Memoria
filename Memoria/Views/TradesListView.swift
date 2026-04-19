@@ -8,7 +8,12 @@
 import SwiftUI
 import SwiftData
 
-struct TradesListView: View {
+struct TradesListView: View, Equatable {
+    static func == (lhs: TradesListView, rhs: TradesListView) -> Bool {
+        lhs.activeTab == rhs.activeTab
+    }
+    
+    let activeTab: Tab?
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Trade.dateAdded, order: .reverse) private var allTrades: [Trade]
     
@@ -246,6 +251,6 @@ struct StatPill: View {
 }
 
 #Preview {
-    TradesListView()
+    TradesListView(activeTab: .trades)
         .preferredColorScheme(.dark)
 }

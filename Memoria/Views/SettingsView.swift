@@ -9,7 +9,12 @@ import SwiftUI
 import SwiftData
 import Combine
 
-struct SettingsView: View {
+struct SettingsView: View, Equatable {
+    static func == (lhs: SettingsView, rhs: SettingsView) -> Bool {
+        lhs.activeTab == rhs.activeTab
+    }
+    
+    let activeTab: Tab?
     @Environment(\.modelContext) private var modelContext
     @Query private var trades: [Trade]
     @Query private var watchlistItems: [WatchlistItem]
@@ -117,9 +122,11 @@ struct SettingsView: View {
         .padding(.bottom, 80)
         .scrollContentBackground(.hidden)
         .task {
+            guard activeTab == .settings else { return }
             await fetchLiveQuotes()
         }
         .onReceive(refreshTimer) { _ in
+            guard activeTab == .settings else { return }
             Task { await fetchLiveQuotes() }
         }
         .sheet(isPresented: $showCapitalSheet) {
@@ -287,6 +294,6 @@ struct CapitalAdjustmentSheet: View {
 }
 
 #Preview {
-    SettingsView()
+    SettingsView(activeTab: .settings)
         .preferredColorScheme(.dark)
 }

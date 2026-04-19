@@ -9,7 +9,12 @@ import SwiftUI
 import SwiftData
 import Combine
 
-struct WatchlistView: View {
+struct WatchlistView: View, Equatable {
+    static func == (lhs: WatchlistView, rhs: WatchlistView) -> Bool {
+        lhs.activeTab == rhs.activeTab
+    }
+    
+    let activeTab: Tab?
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \WatchlistItem.dateAdded, order: .reverse)
     private var watchlistItems: [WatchlistItem]
@@ -71,10 +76,12 @@ struct WatchlistView: View {
             }
         }
         .task {
+            guard activeTab == .watchlist else { return }
             // Fetch quotes when view first appears
             await refreshQuotes()
         }
         .onReceive(refreshTimer) { _ in
+            guard activeTab == .watchlist else { return }
             // Auto-refresh only during active hours
             let status = MarketService.shared.currentStatus()
             if status == .open || status == .preMarket || status == .postMarket {
@@ -82,6 +89,7 @@ struct WatchlistView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshWatchlist"))) { _ in
+            guard activeTab == .watchlist else { return }
             Task { await refreshQuotes() }
         }
     }
@@ -109,6 +117,6 @@ struct WatchlistView: View {
 }
 
 #Preview {
-    WatchlistView()
+    WatchlistView(activeTab: .watchlist)
         .preferredColorScheme(.dark)
 }

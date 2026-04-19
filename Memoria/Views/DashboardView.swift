@@ -21,7 +21,12 @@ enum BenchmarkTimeframe: String, CaseIterable {
     case allTime = "All Time"
 }
 
-struct DashboardView: View {
+struct DashboardView: View, Equatable {
+    static func == (lhs: DashboardView, rhs: DashboardView) -> Bool {
+        lhs.activeTab == rhs.activeTab
+    }
+    
+    let activeTab: Tab?
     @AppStorage("startingBalance") private var startingBalance: Double = 1600.0
     
     // Live Data Source
@@ -54,12 +59,15 @@ struct DashboardView: View {
             }
             .padding(.vertical)
             .padding(.bottom, 80)
+            .drawingGroup() // Metal Acceleration
         }
         .task {
+            guard activeTab == .dashboard else { return }
             await fetchLiveQuotes()
             await fetchSpyData()
         }
         .onReceive(refreshTimer) { _ in
+            guard activeTab == .dashboard else { return }
             let newStatus = MarketService.shared.currentStatus()
             if marketStatus != newStatus {
                 marketStatus = newStatus
@@ -676,6 +684,6 @@ struct DashboardView: View {
 }
 
 #Preview {
-    DashboardView()
+    DashboardView(activeTab: .dashboard)
         .preferredColorScheme(.dark)
 }

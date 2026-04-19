@@ -19,33 +19,30 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Shared Global Background
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
                 ScrollView(.horizontal) {
-                    HStack(spacing: 0) {
-                        DashboardView()
+                    LazyHStack(spacing: 0) {
+                        DashboardView(activeTab: selectedTab)
+                            .equatable()
                             .id(Tab.dashboard)
                             .containerRelativeFrame(.horizontal)
                         
-                        AnalyticsView()
+                        AnalyticsView(activeTab: selectedTab)
+                            .equatable()
                             .id(Tab.analytics)
                             .containerRelativeFrame(.horizontal)
                         
-                        TradesListView()
+                        TradesListView(activeTab: selectedTab)
+                            .equatable()
                             .id(Tab.trades)
                             .containerRelativeFrame(.horizontal)
                         
-                        WatchlistView()
+                        WatchlistView(activeTab: selectedTab)
+                            .equatable()
                             .id(Tab.watchlist)
                             .containerRelativeFrame(.horizontal)
                         
-                        SettingsView()
+                        SettingsView(activeTab: selectedTab)
+                            .equatable()
                             .id(Tab.settings)
                             .containerRelativeFrame(.horizontal)
                     }
@@ -59,6 +56,14 @@ struct ContentView: View {
                 CustomTabBar(selectedTab: $selectedTab)
                     .padding(.bottom, 24)
             }
+            .background(
+                LinearGradient(
+                    colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+            )
             .navigationTitle(selectedTab?.rawValue ?? "Memoria")
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
