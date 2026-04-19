@@ -66,52 +66,28 @@ struct TradesListView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // Background
-                // Background
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+        ScrollView {
+            VStack(spacing: 16) {
+                // Filter Segmented Control
+                filterBar
                 
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // Filter Segmented Control
-                        filterBar
-                        
-                        // Stats Header (shown when viewing Closed or All)
-                        if selectedFilter != "Open" && !closedTrades.isEmpty {
-                            statsHeader
-                        }
-                        
-                        // Trade List
-                        if filteredTrades.isEmpty {
-                            emptyState
-                        } else {
-                            tradesList
-                        }
-                    }
-                    .padding(.top, 8)
+                // Stats Header (shown when viewing Closed or All)
+                if selectedFilter != "Open" && !closedTrades.isEmpty {
+                    statsHeader
+                }
+                
+                // Trade List
+                if filteredTrades.isEmpty {
+                    emptyState
+                } else {
+                    tradesList
                 }
             }
-            .navigationTitle("Trades")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showAddTrade = true }) {
-                        Image(systemName: "plus")
-                    }
-                    .help("Add Trade")
-                }
-            }
-            .sheet(isPresented: $showAddTrade) {
-                AddTradeView()
-            }
-            .sheet(item: $tradeToClose) { trade in
-                CloseTradeSheet(trade: trade)
-            }
+            .padding(.top, 8)
+            .padding(.bottom, 100)
+        }
+        .sheet(item: $tradeToClose) { trade in
+            CloseTradeSheet(trade: trade)
         }
     }
     

@@ -73,9 +73,6 @@ struct TradeDetailView: View {
             if trade.status == .open { Task { await fetchCurrentPrice() } }
         }
         .navigationTitle(trade.ticker)
-        .popover(isPresented: $showCloseSheet, arrowEdge: .bottom) {
-            CloseTradeSheet(trade: trade)
-        }
         .sheet(isPresented: $showEnlargeSheet) {
             FullScreenImageView(attachmentId: trade.attachmentId)
         }
@@ -494,22 +491,30 @@ struct TradeDetailView: View {
     }
     
     private var closeButton: some View {
-        Button(action: { showCloseSheet = true }) {
-            HStack {
-                Image(systemName: "checkmark.circle.fill")
-                Text("Close Trade")
-                    .font(.headline)
+        HStack {
+            Spacer()
+            Button(action: { showCloseSheet = true }) {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Close Trade")
+                        .font(.headline)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 40)
+                .padding(.vertical, 14)
+                .background(
+                    LinearGradient(colors: [.green, .blue], startPoint: .leading, endPoint: .trailing)
+                )
+                .cornerRadius(12)
+                .shadow(color: .green.opacity(0.3), radius: 10, x: 0, y: 5)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(
-                LinearGradient(colors: [.green, .blue], startPoint: .leading, endPoint: .trailing)
-            )
-            .cornerRadius(16)
-            .shadow(color: .green.opacity(0.3), radius: 10, x: 0, y: 5)
+            .buttonStyle(.plain)
+            .popover(isPresented: $showCloseSheet, arrowEdge: .bottom) {
+                CloseTradeSheet(trade: trade, initialPrice: livePrice)
+            }
+            Spacer()
         }
-        .buttonStyle(.plain)
+        .padding(.top, 10)
     }
     
     // MARK: - Logic

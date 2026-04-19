@@ -51,67 +51,60 @@ struct AnalyticsView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // Background Gradient
-                LinearGradient(colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
-                
-                if strategyStats.isEmpty {
-                    ContentUnavailableView(
-                        "No Strategy Data",
-                        systemImage: "chart.bar.xaxis.ascending",
-                        description: Text("Close trades with assigned strategies to see which setups give you the biggest edge.")
-                    )
-                } else {
-                    ScrollView {
-                        VStack(spacing: 24) {
+        ZStack {
+            if strategyStats.isEmpty {
+                ContentUnavailableView(
+                    "No Strategy Data",
+                    systemImage: "chart.bar.xaxis.ascending",
+                    description: Text("Close trades with assigned strategies to see which setups give you the biggest edge.")
+                )
+            } else {
+                ScrollView {
+                    VStack(spacing: 24) {
+                        
+                        // Bar Chart mapping PnL by Strategy
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("P&L by Setup")
+                                .font(.headline)
+                                .padding(.horizontal)
                             
-                            // Bar Chart mapping PnL by Strategy
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("P&L by Setup")
-                                    .font(.headline)
-                                    .padding(.horizontal)
-                                
-                                Chart(strategyStats) { stat in
-                                    BarMark(
-                                        x: .value("Strategy", stat.name),
-                                        y: .value("Total P&L", stat.totalPnl)
-                                    )
-                                    .cornerRadius(4)
-                                    .foregroundStyle(stat.totalPnl >= 0 ? Color.green : Color.red)
-                                }
-                                .chartYScale(domain: yDomain)
-                                .frame(height: 250)
-                                .padding()
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            Chart(strategyStats) { stat in
+                                BarMark(
+                                    x: .value("Strategy", stat.name),
+                                    y: .value("Total P&L", stat.totalPnl)
                                 )
-                                .padding(.horizontal)
+                                .cornerRadius(4)
+                                .foregroundStyle(stat.totalPnl >= 0 ? Color.green : Color.red)
                             }
-                            
-                            // Underlying Spreadsheet Data
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("Strategy Breakdown")
-                                    .font(.headline)
-                                    .padding(.horizontal)
-                                
-                                LazyVStack(spacing: 12) {
-                                    ForEach(strategyStats) { stat in
-                                        strategyRow(stat)
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
+                            .chartYScale(domain: yDomain)
+                            .frame(height: 250)
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            )
+                            .padding(.horizontal)
                         }
-                        .padding(.vertical)
+                        
+                        // Underlying Spreadsheet Data
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Strategy Breakdown")
+                                .font(.headline)
+                                .padding(.horizontal)
+                            
+                            LazyVStack(spacing: 12) {
+                                ForEach(strategyStats) { stat in
+                                    strategyRow(stat)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
                     }
+                    .padding(.vertical)
                 }
             }
-            .navigationTitle("Analytics")
         }
     }
     

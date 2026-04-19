@@ -28,129 +28,121 @@ struct SettingsView: View {
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    VStack(spacing: 24) {
-                        HStack(spacing: 20) {
-                            // Current Balance (What you actually have)
-                            VStack(spacing: 4) {
-                                Text("ACCOUNT BALANCE")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(.secondary)
-                                
-                                Text(currentBalance, format: .currency(code: "USD"))
-                                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                            }
-                            .frame(maxWidth: .infinity)
+        Form {
+            Section {
+                VStack(spacing: 24) {
+                    HStack(spacing: 20) {
+                        // Current Balance (What you actually have)
+                        VStack(spacing: 4) {
+                            Text("ACCOUNT BALANCE")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.secondary)
                             
-                            Divider().frame(height: 30)
-                            
-                            // Net Deposits (In vs Out)
-                            VStack(spacing: 4) {
-                                Text(startingBalance >= 0 ? "NET CONTRIBUTION" : "HOUSE MONEY")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(.secondary)
-                                
-                                Text(abs(startingBalance), format: .currency(code: "USD"))
-                                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                                    .foregroundStyle(startingBalance >= 0 ? Color.primary : Color.orange)
-                            }
-                            .frame(maxWidth: .infinity)
+                            Text(currentBalance, format: .currency(code: "USD"))
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
                         }
-                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
                         
-                        HStack(spacing: 15) {
-                            Button {
-                                isDepositing = true
-                                adjustmentAmount = 0
-                                showCapitalSheet = true
-                            } label: {
-                                Label("Deposit", systemImage: "plus.circle.fill")
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(Color.green.opacity(0.15))
-                                    .foregroundStyle(.green)
-                                    .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
+                        Divider().frame(height: 30)
+                        
+                        // Net Deposits (In vs Out)
+                        VStack(spacing: 4) {
+                            Text(startingBalance >= 0 ? "NET CONTRIBUTION" : "HOUSE MONEY")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.secondary)
                             
-                            Button {
-                                isDepositing = false
-                                adjustmentAmount = 0
-                                showCapitalSheet = true
-                            } label: {
-                                Label("Withdraw", systemImage: "minus.circle.fill")
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(Color.red.opacity(0.15))
-                                    .foregroundStyle(.red)
-                                    .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
+                            Text(abs(startingBalance), format: .currency(code: "USD"))
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundStyle(startingBalance >= 0 ? Color.primary : Color.orange)
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .padding(.vertical, 10)
-                } header: {
-                    Label("Financial Management", systemImage: "briefcase.fill")
-                } footer: {
-                    Text("Account Balance = Contributions + Trading Profits. If your contribution is negative, you are playing with 'House Money' (withdrawn more than you deposited).")
-                }
-                
-                Section {
-                    Button(role: .destructive) {
-                        confirmationText = ""
-                        showingResetAlert = true
-                    } label: {
-                        HStack {
-                            Label("Erase All Data", systemImage: "trash")
-                            Spacer()
+                    
+                    HStack(spacing: 15) {
+                        Button {
+                            isDepositing = true
+                            adjustmentAmount = 0
+                            showCapitalSheet = true
+                        } label: {
+                            Label("Deposit", systemImage: "plus.circle.fill")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.green.opacity(0.15))
+                                .foregroundStyle(.green)
+                                .cornerRadius(10)
                         }
-                    }
-                } header: {
-                    Text("Account Data")
-                        .foregroundStyle(.red)
-                } footer: {
-                    Text("This will permanently delete all your trades and watchlist history. This action cannot be undone.")
-                }
-            }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-                .background(
-                    LinearGradient(colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        .ignoresSafeArea()
-                )
-                .navigationTitle("Settings")
-                .task {
-                    await fetchLiveQuotes()
-                }
-                .onReceive(refreshTimer) { _ in
-                    Task { await fetchLiveQuotes() }
-                }
-                .sheet(isPresented: $showCapitalSheet) {
-                CapitalAdjustmentSheet(isDepositing: isDepositing, currentBalance: currentBalance) { amount in
-                    if isDepositing {
-                        startingBalance += amount
-                    } else {
-                        startingBalance -= amount
+                        .buttonStyle(.plain)
+                        
+                        Button {
+                            isDepositing = false
+                            adjustmentAmount = 0
+                            showCapitalSheet = true
+                        } label: {
+                            Label("Withdraw", systemImage: "minus.circle.fill")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.red.opacity(0.15))
+                                .foregroundStyle(.red)
+                                .cornerRadius(10)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(.vertical, 10)
+            } header: {
+                Label("Financial Management", systemImage: "briefcase.fill")
+            } footer: {
+                Text("Account Balance = Contributions + Trading Profits. If your contribution is negative, you are playing with 'House Money' (withdrawn more than you deposited).")
             }
-            .alert("Erase All Data?", isPresented: $showingResetAlert) {
-                TextField("Type \"DELETE\" to confirm", text: $confirmationText)
-                
-                Button("Cancel", role: .cancel) { }
-                
-                Button("Erase Data", role: .destructive) {
-                    if confirmationText == "DELETE" {
-                        eraseAllData()
+            
+            Section {
+                Button(role: .destructive) {
+                    confirmationText = ""
+                    showingResetAlert = true
+                } label: {
+                    HStack {
+                        Label("Erase All Data", systemImage: "trash")
+                        Spacer()
                     }
                 }
-                // While SwiftUI alerts sometimes don't dynamically disable buttons based on text fields,
-                // we strictly check the string upon submission as the primary safeguard.
-            } message: {
-                Text("This action is permanent and cannot be undone. Please type DELETE to confirm.")
+            } header: {
+                Text("Account Data")
+                    .foregroundStyle(.red)
+            } footer: {
+                Text("This will permanently delete all your trades and watchlist history. This action cannot be undone.")
             }
+        }
+        .formStyle(.grouped)
+        .padding(.bottom, 80)
+        .scrollContentBackground(.hidden)
+        .task {
+            await fetchLiveQuotes()
+        }
+        .onReceive(refreshTimer) { _ in
+            Task { await fetchLiveQuotes() }
+        }
+        .sheet(isPresented: $showCapitalSheet) {
+            CapitalAdjustmentSheet(isDepositing: isDepositing, currentBalance: currentBalance) { amount in
+                if isDepositing {
+                    startingBalance += amount
+                } else {
+                    startingBalance -= amount
+                }
+            }
+        }
+        .alert("Erase All Data?", isPresented: $showingResetAlert) {
+            TextField("Type \"DELETE\" to confirm", text: $confirmationText)
+            
+            Button("Cancel", role: .cancel) { }
+            
+            Button("Erase Data", role: .destructive) {
+                if confirmationText == "DELETE" {
+                    eraseAllData()
+                }
+            }
+        } message: {
+            Text("This action is permanent and cannot be undone. Please type DELETE to confirm.")
         }
     }
     
