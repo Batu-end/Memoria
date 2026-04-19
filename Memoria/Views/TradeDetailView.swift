@@ -13,7 +13,7 @@ struct TradeDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var trade: Trade
     
-    @State private var showCloseSheet = false
+    @State private var showManageSheet = false
     @State private var showDeleteAlert = false
     @State private var showEnlargeSheet = false
     
@@ -44,13 +44,14 @@ struct TradeDetailView: View {
                     // Right Column: The Media & Notes
                     VStack(spacing: 20) {
                         attachmentAndNotesSection
+                        executionHistorySection
                     }
                     .frame(maxWidth: .infinity, alignment: .top)
                 }
                 
-                // Close Trade Button (Open trades only)
+                // Manage Position Button (Open trades only)
                 if trade.status == .open {
-                    closeButton
+                    manageButton
                 }
             }
             .padding()
@@ -73,8 +74,8 @@ struct TradeDetailView: View {
             if trade.status == .open { Task { await fetchCurrentPrice() } }
         }
         .navigationTitle(trade.ticker)
-        .popover(isPresented: $showCloseSheet, arrowEdge: .bottom) {
-            CloseTradeSheet(trade: trade)
+        .sheet(isPresented: $showManageSheet) {
+            ScalePositionSheet(trade: trade, livePrice: livePrice)
         }
         .sheet(isPresented: $showEnlargeSheet) {
             FullScreenImageView(attachmentId: trade.attachmentId)
@@ -295,8 +296,8 @@ struct TradeDetailView: View {
                 
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
                     GridRow {
-                        DetailItem(label: "Entry", value: trade.entryPrice.map { String(format: "$%.2f", $0) } ?? "—")
-                        DetailItem(label: "Quantity", value: trade.quantity.map { "\(Int($0))" } ?? "—")
+                        DetailItem(label: "Avg Entry", value: trade.vwap.map { String(format: "$%.2f", $0) } ?? "—")
+                        DetailItem(label: "Active Qty", value: "\(Int(trade.effectiveQuantity))")
                     }
                     GridRow {
                         DetailItem(label: "Size", value: trade.positionSize.map { String(format: "$%.0f", $0) } ?? "—")
@@ -493,23 +494,79 @@ struct TradeDetailView: View {
         )
     }
     
-    private var closeButton: some View {
-        Button(action: { showCloseSheet = true }) {
+    private var manageButton: some View {
+        Button(action: { showManageSheet = true }) {
             HStack {
-                Image(systemName: "checkmark.circle.fill")
-                Text("Close Trade")
+                Image(systemName: "slider.horizontal.3")
+                Text("Manage Position")
                     .font(.headline)
             }
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding()
             .background(
-                LinearGradient(colors: [.green, .blue], startPoint: .leading, endPoint: .trailing)
+                LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing)
             )
             .cornerRadius(16)
-            .shadow(color: .green.opacity(0.3), radius: 10, x: 0, y: 5)
+            .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
         }
         .buttonStyle(.plain)
+    }
+    
+    private var executionHistorySection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("EXECUTION HISTORY")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.secondary)
+            
+            if trade.executions.isEmpty {
+                Text("No executions recorded.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(trade.executions.sorted(by: { $0.date > $1.date })) { exec in
+                        HStack(spacing: 12) {
+                            // Indicator
+                            Circle()
+                                .fill(exec.type == .buy ? Color.blue : Color.orange)
+                                .frame(width: 8, height: 8)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(exec.type == .buy ? "Bought" : "Sold")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text(exec.date, format: .dateTime.month(.abbreviated).day().hour().minute())
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("\(Int(exec.quantity)) shares")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("@ \(exec.price, format: .currency(code: "USD"))")
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        
+                        if exec.id != trade.executions.sorted(by: { $0.date > $1.date }).last?.id {
+                            Divider().background(Color.white.opacity(0.05))
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
     }
     
     // MARK: - Logic

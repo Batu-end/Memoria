@@ -565,7 +565,8 @@ struct DashboardView: View {
     private var totalFloatingPnl: Double {
         var sum: Double = 0
         for trade in openTrades {
-            if let entry = trade.entryPrice, let qty = trade.quantity, let quote = liveQuotes[trade.ticker.uppercased()] {
+            if let entry = trade.vwap, let quote = liveQuotes[trade.ticker.uppercased()] {
+                let qty = trade.effectiveQuantity
                 let pnl = (quote.currentPrice - entry) * qty * (trade.side == .long ? 1.0 : -1.0)
                 sum += pnl
             }
