@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import Combine
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -22,21 +23,41 @@ struct SettingsView: View {
     @State private var showCapitalSheet = false
     @State private var isDepositing = true
     @State private var adjustmentAmount: Double = 0.0
+    @State private var liveQuotes: [String: StockQuote] = [:]
+    
+    private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    VStack(spacing: 20) {
-                        VStack(spacing: 8) {
-                            Text("STARTING CAPITAL")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(.secondary)
+                    VStack(spacing: 24) {
+                        HStack(spacing: 20) {
+                            // Current Balance (What you actually have)
+                            VStack(spacing: 4) {
+                                Text("ACCOUNT BALANCE")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.secondary)
+                                
+                                Text(currentBalance, format: .currency(code: "USD"))
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                            }
+                            .frame(maxWidth: .infinity)
                             
-                            Text(startingBalance, format: .currency(code: "USD"))
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                            Divider().frame(height: 30)
+                            
+                            // Net Deposits (In vs Out)
+                            VStack(spacing: 4) {
+                                Text(startingBalance >= 0 ? "NET CONTRIBUTION" : "HOUSE MONEY")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.secondary)
+                                
+                                Text(abs(startingBalance), format: .currency(code: "USD"))
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .foregroundStyle(startingBalance >= 0 ? Color.primary : Color.orange)
+                            }
+                            .frame(maxWidth: .infinity)
                         }
-                        .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         
                         HStack(spacing: 15) {
@@ -71,9 +92,9 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, 10)
                 } header: {
-                    Label("Portfolio Management", systemImage: "briefcase.fill")
+                    Label("Financial Management", systemImage: "briefcase.fill")
                 } footer: {
-                    Text("Adjusting your capital will shift your entire equity curve. Use this to record external deposits or withdrawals from your broker.")
+                    Text("Account Balance = Contributions + Trading Profits. If your contribution is negative, you are playing with 'House Money' (withdrawn more than you deposited).")
                 }
                 
                 Section {
@@ -95,13 +116,19 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .background(
-                LinearGradient(colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
-            )
-            .navigationTitle("Settings")
-            .sheet(isPresented: $showCapitalSheet) {
-                CapitalAdjustmentSheet(isDepositing: isDepositing) { amount in
+                .background(
+                    LinearGradient(colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        .ignoresSafeArea()
+                )
+                .navigationTitle("Settings")
+                .task {
+                    await fetchLiveQuotes()
+                }
+                .onReceive(refreshTimer) { _ in
+                    Task { await fetchLiveQuotes() }
+                }
+                .sheet(isPresented: $showCapitalSheet) {
+                CapitalAdjustmentSheet(isDepositing: isDepositing, currentBalance: currentBalance) { amount in
                     if isDepositing {
                         startingBalance += amount
                     } else {
@@ -127,6 +154,31 @@ struct SettingsView: View {
         }
     }
     
+    private var totalFloatingPnl: Double {
+        var sum: Double = 0
+        let openTrades = trades.filter { $0.status == .open }
+        for trade in openTrades {
+            if let entry = trade.entryPrice, let qty = trade.quantity, let quote = liveQuotes[trade.ticker.uppercased()] {
+                let pnl = (quote.currentPrice - entry) * qty * (trade.side == .long ? 1.0 : -1.0)
+                sum += pnl
+            }
+        }
+        return sum
+    }
+    
+    private var currentBalance: Double {
+        let totalPnl = trades.filter { $0.status == .closed }.compactMap { $0.pnl }.reduce(0, +)
+        return startingBalance + totalPnl + totalFloatingPnl
+    }
+    
+    private func fetchLiveQuotes() async {
+        let openTrades = trades.filter { $0.status == .open }
+        guard !openTrades.isEmpty else { return }
+        let symbols = openTrades.map { $0.ticker }
+        let newQuotes = await StockQuoteService.shared.fetchQuotes(for: symbols)
+        liveQuotes.merge(newQuotes) { (_, new) in new }
+    }
+    
     private func eraseAllData() {
         for trade in trades {
             modelContext.delete(trade)
@@ -140,11 +192,16 @@ struct SettingsView: View {
 
 struct CapitalAdjustmentSheet: View {
     let isDepositing: Bool
+    let currentBalance: Double
     var onConfirm: (Double) -> Void
     
     @Environment(\.dismiss) private var dismiss
     @State private var amount: Double?
     @FocusState private var isFocused: Bool
+    
+    private var isOverDrawing: Bool {
+        !isDepositing && (amount ?? 0) > currentBalance
+    }
     
     var body: some View {
         NavigationStack {
@@ -181,6 +238,16 @@ struct CapitalAdjustmentSheet: View {
                 .background(.ultraThinMaterial)
                 .cornerRadius(20)
                 
+                if isOverDrawing {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text("Insufficient Funds")
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(.red)
+                    .padding(.top, -20)
+                }
+                
                 Spacer()
                 
                 Button {
@@ -189,18 +256,18 @@ struct CapitalAdjustmentSheet: View {
                     }
                     dismiss()
                 } label: {
-                    Text("Confirm \(isDepositing ? "Deposit" : "Withdrawal")")
+                    Text(isOverDrawing ? "Cannot Withdraw" : "Confirm \(isDepositing ? "Deposit" : "Withdrawal")")
                         .font(.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(isDepositing ? Color.green : Color.red)
+                        .background(isOverDrawing ? Color.gray : (isDepositing ? Color.green : Color.red))
                         .cornerRadius(16)
                         .padding(.horizontal, 20)
                 }
                 .buttonStyle(.plain)
-                .disabled(amount == nil || amount == 0)
-                .opacity(amount == nil || amount == 0 ? 0.5 : 1.0)
+                .disabled(amount == nil || amount == 0 || isOverDrawing)
+                .opacity(amount == nil || amount == 0 || isOverDrawing ? 0.5 : 1.0)
                 .padding(.bottom, 30)
             }
             .background(

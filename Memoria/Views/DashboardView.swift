@@ -249,20 +249,20 @@ struct DashboardView: View {
     // MARK: - Equity Curve
     
     private var isEquityPositive: Bool {
-        currentBalance >= startingBalance
+        totalPnl >= 0
     }
     
     private var yDomain: ClosedRange<Double> {
-        let balances = equityCurveData.map { $0.balance }
-        let minBalance = (balances.min() ?? startingBalance) * 0.98
-        let maxBalance = (balances.max() ?? startingBalance) * 1.02
-        guard maxBalance > minBalance else { return (minBalance - 10)...(maxBalance + 10) }
-        return minBalance...maxBalance
+        let profits = equityCurveData.map { $0.balance }
+        let minP = (profits.min() ?? 0) - 100
+        let maxP = (profits.max() ?? 0) + 100
+        guard maxP > minP else { return -100...100 }
+        return minP...maxP
     }
     
     private var equityCurveSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Equity Curve")
+            Text("Cumulative Profit ($)")
                 .font(.headline)
                 .padding(.horizontal)
             
@@ -275,7 +275,7 @@ struct DashboardView: View {
                         ForEach(equityCurveData) { point in
                             LineMark(
                                 x: .value("Time", point.date),
-                                y: .value("Balance", point.balance)
+                                y: .value("Profit", point.balance)
                             )
                             .interpolationMethod(.monotone)
                             .foregroundStyle(isEquityPositive ? Color.green : Color.red)
@@ -330,10 +330,10 @@ struct DashboardView: View {
                     // Portfolio Return
                     HStack(spacing: 4) {
                         Image(systemName: "chart.pie.fill")
-                        Text("\(portfolioReturn >= 0 ? "+" : "")\(portfolioReturn, specifier: "%.2f")%")
+                        Text("\(totalPnl >= 0 ? "+" : "")\(totalPnl, format: .currency(code: "USD"))")
                     }
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(portfolioReturn >= 0 ? Color.green : Color.red)
+                    .foregroundStyle(totalPnl >= 0 ? Color.green : Color.red)
                     
                     // VS
                     Text("vs")
@@ -344,11 +344,11 @@ struct DashboardView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "building.columns.fill")
                         if let sr = spyReturn {
-                            Text("SPY \(sr >= 0 ? "+" : "")\(sr, specifier: "%.2f")%")
+                            let spyProfit = (sr / 100.0) * startingBalance
+                            Text("SPY \(spyProfit >= 0 ? "+" : "")\(spyProfit, format: .currency(code: "USD"))")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(sr >= 0 ? Color.green : Color.red)
+                                .foregroundStyle(spyProfit >= 0 ? Color.green : Color.red)
                         } else {
-                            // Empty placeholder until fetched
                             Text("SPY --")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(.secondary)
@@ -366,26 +366,23 @@ struct DashboardView: View {
                 
                 if portfolioRelativeCurve.count >= 2 {
                     Chart {
-                        if let firstPort = portfolioRelativeCurve.first?.balance, firstPort > 0 {
-                            ForEach(portfolioRelativeCurve) { point in
-                                let ptRet = ((point.balance - firstPort) / firstPort) * 100
-                                LineMark(
-                                    x: .value("Time", point.date),
-                                    y: .value("Return", ptRet),
-                                    series: .value("Type", "Portfolio")
-                                )
-                                .interpolationMethod(.monotone)
-                                .foregroundStyle(isTimeframePortfolioPositive ? Color.green : Color.red)
-                                .lineStyle(StrokeStyle(lineWidth: 3))
-                            }
+                        ForEach(portfolioRelativeCurve) { point in
+                            LineMark(
+                                x: .value("Time", point.date),
+                                y: .value("Profit", point.balance),
+                                series: .value("Type", "Portfolio")
+                            )
+                            .interpolationMethod(.monotone)
+                            .foregroundStyle(isTimeframePortfolioPositive ? Color.green : Color.red)
+                            .lineStyle(StrokeStyle(lineWidth: 3))
                         }
                         
                         if let firstSpy = spyHistoricalData.first?.close, firstSpy > 0 {
                             ForEach(spyHistoricalData) { point in
-                                let spyRet = ((point.close - firstSpy) / firstSpy) * 100
+                                let spyProfit = ((point.close - firstSpy) / firstSpy) * startingBalance
                                 LineMark(
                                     x: .value("Time", point.date),
-                                    y: .value("Return", spyRet),
+                                    y: .value("Profit", spyProfit),
                                     series: .value("Type", "SPY")
                                 )
                                 .interpolationMethod(.monotone)
@@ -400,7 +397,7 @@ struct DashboardView: View {
                         AxisMarks(position: .leading) { value in
                             AxisValueLabel {
                                 if let d = value.as(Double.self) {
-                                    Text("\(d, specifier: "%.1f")%")
+                                    Text("\(d >= 0 ? "+" : "")\(Int(d))")
                                 }
                             }
                             AxisGridLine()
@@ -471,30 +468,30 @@ struct DashboardView: View {
     
     private var equityCurveData: [EquityDataPoint] {
         var points: [EquityDataPoint] = []
-        var runningBalance = startingBalance
+        var runningPnl = 0.0
         
-        // 1. Initial point
+        // 1. Starting point is always 0 (True Skill Baseline)
         if let firstTrade = trades.last {
-            points.append(EquityDataPoint(date: firstTrade.dateAdded, balance: runningBalance))
+            points.append(EquityDataPoint(date: firstTrade.dateAdded, balance: 0))
         } else {
-            points.append(EquityDataPoint(date: Date(), balance: runningBalance))
+            points.append(EquityDataPoint(date: Date(), balance: 0))
         }
         
-        // 2. Sort closed trades sequentially from oldest to newest
+        // 2. Plot closed trades as profit increments
         let closedTradesReversed = trades.filter { $0.status == .closed && $0.pnl != nil }.sorted {
             ($0.dateClosed ?? $0.dateAdded) < ($1.dateClosed ?? $1.dateAdded)
         }
         
         for trade in closedTradesReversed {
             if let pnl = trade.pnl {
-                runningBalance += pnl
+                runningPnl += pnl
                 let date = trade.dateClosed ?? trade.dateAdded
-                points.append(EquityDataPoint(date: date, balance: runningBalance))
+                points.append(EquityDataPoint(date: date, balance: runningPnl))
             }
         }
         
-        // 3. Current Live Point (includes floating P&L)
-        points.append(EquityDataPoint(date: Date(), balance: currentBalance))
+        // 3. Include current floating P&L
+        points.append(EquityDataPoint(date: Date(), balance: runningPnl + totalFloatingPnl))
         
         return points
     }
@@ -502,8 +499,7 @@ struct DashboardView: View {
     // MARK: - Relative Performance Graph Logic
     
     private var isTimeframePortfolioPositive: Bool {
-        guard let first = portfolioRelativeCurve.first?.balance else { return false }
-        return currentBalance >= first
+        totalPnl >= 0
     }
     
     private func getBalance(on date: Date) -> Double {
@@ -525,38 +521,32 @@ struct DashboardView: View {
             startDate = trades.last?.dateAdded ?? Date()
         }
         
-        let baselineValue = getBalance(on: startDate)
-        var points: [EquityDataPoint] = [EquityDataPoint(date: startDate, balance: baselineValue)]
-        
-        let validTrades = trades.filter { $0.status == .closed && $0.pnl != nil }.sorted {
+        var points: [EquityDataPoint] = [EquityDataPoint(date: startDate, balance: 0)]
+        let timeframeTrades = trades.filter { $0.status == .closed && $0.pnl != nil }.sorted {
             ($0.dateClosed ?? $0.dateAdded) < ($1.dateClosed ?? $1.dateAdded)
         }.filter { ($0.dateClosed ?? $0.dateAdded) >= startDate }
         
-        var runningBalance = baselineValue
-        for trade in validTrades {
-            runningBalance += trade.pnl ?? 0
+        var accumProfit = 0.0
+        for trade in timeframeTrades {
+            accumProfit += trade.pnl ?? 0
             let date = trade.dateClosed ?? trade.dateAdded
-            points.append(EquityDataPoint(date: date, balance: runningBalance))
+            points.append(EquityDataPoint(date: date, balance: accumProfit))
         }
         
-        points.append(EquityDataPoint(date: Date(), balance: currentBalance))
+        points.append(EquityDataPoint(date: Date(), balance: accumProfit + totalFloatingPnl))
         return points
     }
     
     private var relativeYDomain: ClosedRange<Double> {
-        let curve = portfolioRelativeCurve
-        guard let firstPort = curve.first?.balance, firstPort > 0 else { return -5...5 }
-        let portReturns = curve.map { (($0.balance - firstPort) / firstPort) * 100 }
+        let curve = portfolioRelativeCurve.map { $0.balance }
+        let firstSpy = spyHistoricalData.first?.close ?? 1.0
+        let spyProfits = spyHistoricalData.map { (($0.close - firstSpy) / firstSpy) * startingBalance }
         
-        guard let firstSpy = spyHistoricalData.first?.close, firstSpy > 0 else { return -5...5 }
-        let spyReturns = spyHistoricalData.map { (($0.close - firstSpy) / firstSpy) * 100 }
-        
-        let allReturns = portReturns + spyReturns
-        guard !allReturns.isEmpty else { return -5...5 }
-        let minR = (allReturns.min() ?? 0) - 2
-        let maxR = (allReturns.max() ?? 0) + 2
-        guard maxR > minR else { return (minR - 5)...(maxR + 5) }
-        return minR...maxR
+        let allValues = curve + spyProfits
+        guard !allValues.isEmpty else { return -100...100 }
+        let minV = (allValues.min() ?? 0) - 100
+        let maxV = (allValues.max() ?? 0) + 100
+        return minV...maxV
     }
     
     private var totalFloatingPnl: Double {
@@ -586,8 +576,11 @@ struct DashboardView: View {
     }
     
     private var portfolioReturn: Double {
-        guard startingBalance > 0 else { return 0 }
-        return ((currentBalance - startingBalance) / startingBalance) * 100
+        // We use the sum of every trade's % return to show "Performance Skill"
+        // This prevents massive deposits from diluting your historical success.
+        let tradeReturns = trades.compactMap { $0.percentReturn }
+        guard !tradeReturns.isEmpty else { return 0 }
+        return tradeReturns.reduce(0, +)
     }
     
     private var spyReturn: Double? {
