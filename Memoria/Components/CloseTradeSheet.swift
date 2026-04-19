@@ -13,9 +13,19 @@ struct CloseTradeSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     let trade: Trade
+    let initialPrice: Double?
     
     @State private var exitPriceString: String = ""
     @State private var dateClosed: Date = Date()
+    
+    init(trade: Trade, initialPrice: Double? = nil) {
+        self.trade = trade
+        self.initialPrice = initialPrice
+        // Set initial state from the passed price if available
+        if let price = initialPrice {
+            _exitPriceString = State(initialValue: String(format: "%.2f", price))
+        }
+    }
     
     private var exitPrice: Double? {
         Double(exitPriceString)
@@ -70,7 +80,6 @@ struct CloseTradeSheet: View {
                             DatePicker("", selection: $dateClosed, displayedComponents: .date)
                                 .labelsHidden()
                                 .datePickerStyle(.compact)
-                                .scaleEffect(0.9)
                         }
                     }
                 }
