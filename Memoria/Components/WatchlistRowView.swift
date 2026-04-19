@@ -20,6 +20,9 @@ struct WatchlistRowView: View {
     
     var body: some View {
         HStack(spacing: 12) {
+            // Ticker Logo
+            TickerLogoView(ticker: item.ticker, size: 38)
+            
             // Left: Ticker + Date Added
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.ticker)
