@@ -34,101 +34,83 @@ struct CloseTradeSheet: View {
     }
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 0) {
             // Header
-            VStack(spacing: 8) {
-                Text("Close Trade")
-                    .font(.title2)
-                    .bold()
-                
-                HStack(spacing: 6) {
-                    Text(trade.ticker)
-                        .font(.headline)
-                    Text(trade.side.rawValue)
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundStyle(trade.side == .long ? Color.green : Color.red)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background((trade.side == .long ? Color.green : Color.red).opacity(0.15))
-                        .clipShape(Capsule())
+            VStack(spacing: 4) {
+                Text("Finalize Trade")
+                    .font(.system(size: 14, weight: .bold))
+                Text("\(trade.ticker) • \(trade.side.rawValue)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 12)
+            
+            Divider().background(Color.white.opacity(0.1))
+            
+            VStack(spacing: 16) {
+                // Inputs
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 12) {
+                    GridRow {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("EXIT")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.secondary)
+                            TextField("0.00", text: $exitPriceString)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                                .padding(6)
+                                .background(Color.white.opacity(0.05))
+                                .cornerRadius(4)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("DATE")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.secondary)
+                            DatePicker("", selection: $dateClosed, displayedComponents: .date)
+                                .labelsHidden()
+                                .datePickerStyle(.compact)
+                                .scaleEffect(0.9)
+                        }
+                    }
                 }
                 
-                if let entry = trade.entryPrice {
-                    Text("Entry: \(entry, format: .currency(code: "USD"))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                // Result Card
+                if let preview = previewPnl {
+                    VStack(spacing: 2) {
+                        Text(preview >= 0 ? "Potential Profit" : "Potential Loss")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Text(preview >= 0 ? "+\(preview, specifier: "%.2f")" : "\(preview, specifier: "%.2f")")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundStyle(preview >= 0 ? Color.green : Color.red)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.03))
+                    .cornerRadius(8)
                 }
-            }
-            
-            Divider()
-            
-            // Exit Price Input
-            VStack(alignment: .leading, spacing: 10) {
-                Text("EXIT PRICE")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.gray)
                 
-                TextField("0.00", text: $exitPriceString)
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(
-                                (!exitPriceString.isEmpty && !isValid)
-                                    ? AnyShapeStyle(.red)
-                                    : AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)),
-                                lineWidth: 1
-                            )
-                    )
-                
-                DatePicker("Date Closed", selection: $dateClosed, displayedComponents: .date)
-                    .font(.subheadline)
-            }
-            
-            // P&L Preview
-            if let preview = previewPnl {
-                VStack(spacing: 4) {
-                    Text("Estimated P&L")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(preview >= 0 ? "+\(preview, specifier: "%.2f")" : "\(preview, specifier: "%.2f")")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(preview >= 0 ? Color.green : Color.red)
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background((preview >= 0 ? Color.green : Color.red).opacity(0.1))
-                .cornerRadius(12)
-            }
-            
-            Spacer()
-            
-            // Confirm Button
-            Button(action: closeTrade) {
-                Text("Confirm Close")
-                    .font(.headline)
+                // Confirm
+                Button(action: closeTrade) {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Confirm & Close")
+                    }
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(
-                        LinearGradient(
-                            colors: isValid ? [.blue, .purple] : [.gray, .gray],
-                            startPoint: .leading, endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(16)
-                    .opacity(isValid ? 1 : 0.5)
+                    .padding(.vertical, 8)
+                    .background(isValid ? Color.blue : Color.gray.opacity(0.2))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                .disabled(!isValid)
             }
-            .buttonStyle(.plain)
-            .disabled(!isValid)
+            .padding(16)
         }
-        .padding(24)
-        .frame(minWidth: 360, minHeight: 480)
+        .frame(width: 260)
+        .background(.ultraThinMaterial)
     }
     
     private func closeTrade() {

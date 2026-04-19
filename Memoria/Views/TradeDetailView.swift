@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import Combine
 
 struct TradeDetailView: View {
     @Environment(\.modelContext) private var modelContext
@@ -15,6 +16,10 @@ struct TradeDetailView: View {
     @State private var showCloseSheet = false
     @State private var showDeleteAlert = false
     @State private var showEnlargeSheet = false
+    
+    // Live Data for Gauge
+    @State private var livePrice: Double?
+    private let refreshTimer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
     
     var body: some View {
         ScrollView {
@@ -28,8 +33,11 @@ struct TradeDetailView: View {
                         detailsAndPnLSection
                         
                         if trade.stopLoss != nil || trade.takeProfit != nil {
+                            rmulGaugeSection
                             targetsSection
                         }
+                        
+                        executionChecklistSection
                     }
                     .frame(maxWidth: .infinity, alignment: .top)
                     
@@ -58,8 +66,14 @@ struct TradeDetailView: View {
             )
             .ignoresSafeArea()
         )
+        .onAppear {
+            if trade.status == .open { Task { await fetchCurrentPrice() } }
+        }
+        .onReceive(refreshTimer) { _ in
+            if trade.status == .open { Task { await fetchCurrentPrice() } }
+        }
         .navigationTitle(trade.ticker)
-        .sheet(isPresented: $showCloseSheet) {
+        .popover(isPresented: $showCloseSheet, arrowEdge: .bottom) {
             CloseTradeSheet(trade: trade)
         }
         .sheet(isPresented: $showEnlargeSheet) {
@@ -79,6 +93,130 @@ struct TradeDetailView: View {
     }
     
     // MARK: - Sections
+    
+    private var rmulGaugeSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("RISK VS REWARD GAUGE")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let r = (trade.status == .open ? currentR : trade.rMultiple) {
+                    Text("\(r >= 0 ? "+" : "")\(r, specifier: "%.2f")R")
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundStyle(r >= 0 ? .green : .red)
+                }
+            }
+            
+            GeometryReader { geo in
+                let width = geo.size.width
+                let entry = trade.entryPrice ?? 0
+                let sl = trade.stopLoss ?? (entry * 0.9)
+                let tp = trade.takeProfit ?? (entry * 1.1)
+                let current = trade.status == .closed ? (trade.exitPrice ?? entry) : (livePrice ?? entry)
+                
+                let range = tp - sl
+                let entryPos = range > 0 ? CGFloat((entry - sl) / range) * width : width / 2
+                let currentPos = range > 0 ? CGFloat((current - sl) / range) * width : width / 2
+                
+                ZStack(alignment: .leading) {
+                    // Background Track
+                    Capsule()
+                        .fill(Color.white.opacity(0.05))
+                        .frame(height: 8)
+                    
+                    // Risk Zone (SL to Entry)
+                    Rectangle()
+                        .fill(LinearGradient(colors: [.red.opacity(0.6), .red.opacity(0.1)], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: max(0, entryPos), height: 8)
+                        .cornerRadius(4)
+                    
+                    // Reward Zone (Entry to TP)
+                    Rectangle()
+                        .fill(LinearGradient(colors: [.green.opacity(0.1), .green.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: max(0, width - entryPos), height: 8)
+                        .offset(x: entryPos)
+                        .cornerRadius(4)
+                    
+                    // Entry Marker
+                    Rectangle()
+                        .fill(.white)
+                        .frame(width: 2, height: 16)
+                        .offset(x: entryPos - 1, y: -4)
+                    
+                    // Current Price Marker
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 12, height: 12)
+                        .shadow(color: .black.opacity(0.5), radius: 3)
+                        .overlay(Circle().stroke(current >= entry ? Color.green : Color.red, lineWidth: 2))
+                        .offset(x: min(max(0, currentPos - 6), width - 12), y: -2)
+                }
+            }
+            .frame(height: 20)
+            
+            HStack {
+                Text("Stop Loss")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("Entry")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("Take Profit")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+    
+    private let ruleOptions = ["Followed Plan", "Waited for Setup", "Stuck to SL", "Right Size"]
+    
+    private var executionChecklistSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("EXECUTION CHECKLIST")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.secondary)
+            
+            VStack(spacing: 8) {
+                ForEach(ruleOptions, id: \.self) { rule in
+                    Button {
+                        if trade.rulesFollowed.contains(rule) {
+                            trade.rulesFollowed.removeAll { $0 == rule }
+                        } else {
+                            trade.rulesFollowed.append(rule)
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: trade.rulesFollowed.contains(rule) ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(trade.rulesFollowed.contains(rule) ? .green : .secondary)
+                            Text(rule)
+                                .font(.system(size: 13))
+                                .foregroundStyle(trade.rulesFollowed.contains(rule) ? .primary : .secondary)
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
     
     private var headerSection: some View {
         HStack {
@@ -176,24 +314,33 @@ struct TradeDetailView: View {
             }
             .padding(16)
             
-            // P&L Header (if closed)
-            if trade.status == .closed {
+            // P&L Header (Realized or Floating)
+            if let displayPnl = (trade.status == .closed ? trade.pnl : openPnl) {
                 Divider().background(Color.white.opacity(0.1))
                 
                 VStack(spacing: 4) {
-                    if let pnl = trade.pnl {
-                        Text(pnl >= 0 ? "+\(pnl, format: .currency(code: "USD"))" : "\(pnl, format: .currency(code: "USD"))")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundStyle(pnl >= 0 ? Color.green : Color.red)
+                    Text(displayPnl >= 0 ? "+\(displayPnl, format: .currency(code: "USD"))" : "\(displayPnl, format: .currency(code: "USD"))")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(displayPnl >= 0 ? Color.green : Color.red)
+                    
+                    HStack(spacing: 4) {
+                        Text(trade.status == .closed ? "REALIZED" : "UNREALIZED")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(4)
                     }
+                    .padding(.bottom, 4)
                     
                     HStack(spacing: 12) {
-                        if let pct = trade.percentReturn {
+                        if let pct = (trade.status == .closed ? trade.percentReturn : openPercentReturn) {
                             Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.2f")%")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
-                        if let r = trade.rMultiple {
+                        if let r = (trade.status == .closed ? trade.rMultiple : currentR) {
                             Text("\(r >= 0 ? "+" : "")\(r, specifier: "%.1f")R")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(.orange)
@@ -202,7 +349,7 @@ struct TradeDetailView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
-                .background((trade.isWin ? Color.green : Color.red).opacity(0.1))
+                .background((displayPnl >= 0 ? Color.green : Color.red).opacity(0.1))
             }
         }
         .background(Color(red: 0.15, green: 0.15, blue: 0.16))
@@ -363,6 +510,37 @@ struct TradeDetailView: View {
             .shadow(color: .green.opacity(0.3), radius: 10, x: 0, y: 5)
         }
         .buttonStyle(.plain)
+    }
+    
+    // MARK: - Logic
+    
+    private var currentR: Double? {
+        guard let entry = trade.entryPrice, let sl = trade.stopLoss, let current = livePrice else { return nil }
+        let risk = abs(entry - sl)
+        guard risk > 0 else { return nil }
+        let pnlPerShare = (current - entry) * (trade.side == .long ? 1.0 : -1.0)
+        return pnlPerShare / risk
+    }
+    
+    private var openPnl: Double? {
+        guard let entry = trade.entryPrice, let current = livePrice else { return nil }
+        let qty = trade.quantity ?? 1.0
+        let direction: Double = (trade.side == .short) ? -1.0 : 1.0
+        return (current - entry) * qty * direction
+    }
+    
+    private var openPercentReturn: Double? {
+        guard let entry = trade.entryPrice, let current = livePrice, entry != 0 else { return nil }
+        let direction: Double = (trade.side == .short) ? -1.0 : 1.0
+        return ((current - entry) / entry) * 100.0 * direction
+    }
+    
+    private func fetchCurrentPrice() async {
+        if let quote = await StockQuoteService.shared.fetchQuote(for: trade.ticker) {
+            withAnimation {
+                self.livePrice = quote.currentPrice
+            }
+        }
     }
 }
 
