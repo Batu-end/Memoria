@@ -64,6 +64,9 @@ struct TradeDetailView: View {
     
     private var headerSection: some View {
         HStack {
+            TickerLogoView(ticker: trade.ticker, size: 48)
+                .padding(.trailing, 4)
+                
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Text(trade.ticker)

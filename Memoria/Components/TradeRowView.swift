@@ -21,7 +21,9 @@ struct TradeRowView: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
+            TickerLogoView(ticker: trade.ticker, size: 40)
+            
             // Left: Ticker + Side Badge
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
