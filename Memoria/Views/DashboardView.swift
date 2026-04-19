@@ -47,6 +47,7 @@ struct DashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 balanceHeroSection
+                activePortfolioSection
                 summaryCards
                 equityCurveSection
                 spyPerformanceSection
@@ -117,6 +118,64 @@ struct DashboardView: View {
         .padding(.top, 20)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity)
+    }
+    
+    // MARK: - Active Portfolio Hub
+    
+    private var activePortfolioSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Active Portfolio")
+                .font(.headline)
+                .padding(.horizontal)
+            
+            HStack(spacing: 15) {
+                // Floating P&L
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("UNREALIZED P&L")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(alignment: .lastTextBaseline, spacing: 4) {
+                        Text(totalFloatingPnl >= 0 ? "+" : "")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(totalFloatingPnl >= 0 ? .green : .red)
+                        Text(totalFloatingPnl, format: .currency(code: "USD"))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundStyle(totalFloatingPnl >= 0 ? .green : .red)
+                    }
+                    
+                    Text("\(totalFloatingReturn >= 0 ? "+" : "")\(totalFloatingReturn, specifier: "%.2f")%")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                
+                // Open Exposure
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("OPEN EXPOSURE")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                    
+                    Text(totalExposure, format: .currency(code: "USD"))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.blue)
+                    
+                    Text("\(openTradesCount) Active Positions")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+            }
+            .padding(.horizontal)
+        }
     }
     
     // MARK: - Summary Cards (Metrics)
@@ -509,6 +568,17 @@ struct DashboardView: View {
             }
         }
         return sum
+    }
+    
+    private var totalFloatingReturn: Double {
+        guard totalExposure > 0 else { return 0 }
+        return (totalFloatingPnl / totalExposure) * 100
+    }
+    
+    private var totalExposure: Double {
+        openTrades.reduce(0) { sum, trade in
+            sum + (trade.positionSize ?? 0)
+        }
     }
     
     private var currentBalance: Double {
