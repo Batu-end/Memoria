@@ -22,6 +22,7 @@ class AddTradeViewModel {
     var stopLossString: String = ""
     var takeProfitString: String = ""
     var notes: String = ""
+    var confidenceScore: Int = 0
     
     // MARK: - Validation
     
@@ -70,6 +71,7 @@ class AddTradeViewModel {
         trade.takeProfit = Double(takeProfitString)
         trade.strategy = resolvedStrategy
         trade.notes = notes.isEmpty ? nil : notes
+        trade.confidenceScore = confidenceScore
         
         // ── Step 3: Record Initial Execution ────────
         if let p = price, let q = trade.quantity {

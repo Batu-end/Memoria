@@ -14,6 +14,11 @@ struct ScalePositionSheet: View {
     @State private var amountString: String = ""
     @State private var date: Date = Date()
     
+    enum Field {
+        case amount, quantity, price
+    }
+    @FocusState private var focusedField: Field?
+    
     init(trade: Trade, livePrice: Double? = nil) {
         self.trade = trade
         self.livePrice = livePrice
@@ -76,7 +81,10 @@ struct ScalePositionSheet: View {
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.plain)
                             .foregroundStyle(.blue)
-                            .onChange(of: priceString) { _, _ in syncFromQuantity() }
+                            .focused($focusedField, equals: .price)
+                            .onChange(of: priceString) { _, _ in 
+                                if focusedField == .price { syncFromQuantity() }
+                            }
                     }
                     
                     HStack {
@@ -86,8 +94,11 @@ struct ScalePositionSheet: View {
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.plain)
                             .foregroundStyle(.white)
+                            .focused($focusedField, equals: .amount)
                             .onChange(of: amountString) { _, newValue in
-                                syncFromAmount(newValue)
+                                if focusedField == .amount {
+                                    syncFromAmount(newValue)
+                                }
                             }
                         
                         if type == .sell {
@@ -109,8 +120,11 @@ struct ScalePositionSheet: View {
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.plain)
                             .foregroundStyle(.blue)
+                            .focused($focusedField, equals: .quantity)
                             .onChange(of: quantityString) { _, newValue in
-                                syncFromQuantity(newValue)
+                                if focusedField == .quantity {
+                                    syncFromQuantity(newValue)
+                                }
                             }
                     }
                     
@@ -165,16 +179,24 @@ struct ScalePositionSheet: View {
     
     // MARK: - Sync Logic
     private func syncFromAmount(_ newValue: String) {
-        guard let amount = Double(newValue), let p = price, p > 0 else { return }
-        let calculatedQty = floor(amount / p)
-        let newQtyString = String(format: "%.0f", calculatedQty)
-        if quantityString != newQtyString {
-            quantityString = newQtyString
+        let cleaned = newValue.replacingOccurrences(of: "$", with: "").replacingOccurrences(of: ",", with: "")
+        guard let amount = Double(cleaned), let p = price, p > 0 else { return }
+        let calculatedQty = amount / p
+        // Use up to 4 decimal places, but strip trailing zeros
+        let formatter = NumberFormatter()
+        formatter.maximumFractionDigits = 4
+        formatter.minimumFractionDigits = 0
+        formatter.numberStyle = .decimal
+        
+        if let newQtyString = formatter.string(from: NSNumber(value: calculatedQty)) {
+            if quantityString != newQtyString {
+                quantityString = newQtyString
+            }
         }
     }
     
     private func syncFromQuantity(_ newValue: String? = nil) {
-        let qStr = newValue ?? quantityString
+        let qStr = (newValue ?? quantityString).replacingOccurrences(of: ",", with: "")
         guard let q = Double(qStr), let p = price else { return }
         let calculatedAmount = q * p
         let newAmountString = String(format: "%.2f", calculatedAmount)

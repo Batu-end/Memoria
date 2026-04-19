@@ -54,6 +54,18 @@ struct TradeRowView: View {
                     }
                 }
                 
+                // Confidence Stars
+                if trade.confidenceScore > 0 {
+                    HStack(spacing: 2) {
+                        ForEach(0..<trade.confidenceScore, id: \.self) { _ in
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.0))
+                        }
+                    }
+                    .padding(.top, -2)
+                }
+                
                 // Entry info
                 HStack(spacing: 8) {
                     if let entry = trade.vwap {

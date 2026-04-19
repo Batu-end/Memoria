@@ -74,9 +74,12 @@ struct DashboardView: View {
                 .ignoresSafeArea()
         )
         .task {
-            // Pre-warm all executions to prevent math flickering (Relationship Faulting)
+            // Pre-warm all executions to prevent math flickering and fix accidental 3-star defaults
             for trade in trades {
                 _ = trade.executions.count
+                if trade.confidenceScore == 3 {
+                    trade.confidenceScore = 0
+                }
             }
             
             await fetchLiveQuotes()
