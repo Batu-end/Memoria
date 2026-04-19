@@ -295,6 +295,18 @@ struct TradeDetailView: View {
                 }
             }
             .padding(.horizontal, 16)
+            .dropDestination(for: Data.self) { items, location in
+                guard let imageData = items.first else { return false }
+                
+                if let newId = LocalAttachmentService.shared.saveImage(from: imageData) {
+                    if let oldId = trade.attachmentId {
+                        LocalAttachmentService.shared.deleteImage(id: oldId)
+                    }
+                    trade.attachmentId = newId
+                    return true
+                }
+                return false
+            }
             .dropDestination(for: URL.self) { items, location in
                 guard let itemURL = items.first else { return false }
                 if let newId = LocalAttachmentService.shared.saveImage(from: itemURL) {
@@ -360,21 +372,30 @@ struct FullScreenImageView: View {
     let attachmentId: String?
     @Environment(\.dismiss) private var dismiss
     
+    @State private var resetTrigger = false
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.black.ignoresSafeArea()
                 
-                LocalImageView(attachmentId: attachmentId)
-                    .interactiveDismissDisabled(false)
+                ZoomableScrollView(attachmentId: attachmentId, resetTrigger: $resetTrigger)
+                    .ignoresSafeArea()
             }
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(action: {
+                        resetTrigger = true
+                    }) {
+                        Label("Reset Zoom", systemImage: "gobackward")
+                    }
                 }
             }
         }
-        .frame(minWidth: 600, minHeight: 400)
+        .frame(minWidth: 940, minHeight: 640)
     }
 }
 

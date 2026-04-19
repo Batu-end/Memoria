@@ -38,14 +38,18 @@ class LocalAttachmentService {
     /// Reads raw NSImage data from a dragged-in file URL and writes it to the local cache.
     /// Returns a UUID string tracking the specific file.
     func saveImage(from url: URL) -> String? {
-        // Gain file access permission (crucial for macOS sandbox)
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
         
-        guard let data = try? Data(contentsOf: url),
-              let nsImage = NSImage(data: data),
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return saveImage(from: data)
+    }
+    
+    /// Directly processes raw image data (useful for floating screenshots or clipboard).
+    func saveImage(from data: Data) -> String? {
+        guard let nsImage = NSImage(data: data),
               let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            print("Memoria Error: Disallowed or corrupted file type dropped.")
+            print("Memoria Error: Disallowed or corrupted data dropped.")
             return nil
         }
         
