@@ -170,6 +170,18 @@ struct AddTradeView: View {
                     Label("Strategy & Risk", systemImage: "shield.lefthalf.filled")
                 }
                 
+                // ── Conviction ──────────────────────────
+                Section {
+                    HStack {
+                        Text("Confidence")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        StarRatingView(rating: $viewModel.confidenceScore)
+                    }
+                } header: {
+                    Label("Conviction", systemImage: "brain.head.profile")
+                }
+                
                 // ── Notes ───────────────────────────────
                 Section {
                     TextEditor(text: $viewModel.notes)

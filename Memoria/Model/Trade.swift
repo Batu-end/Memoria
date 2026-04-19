@@ -19,6 +19,7 @@ final class Trade {
     var assetTypeRaw: String?   // "Stock", "ETF" (expandable to "Option", "Crypto" later)
     var attachmentId: String?   // UUID representing the local OS file mapping
     var rulesFollowed: [String] = []  // Tracking strategy discipline
+    var confidenceScore: Int = 0      // 1-5 rating of trade conviction
     
     @Relationship(deleteRule: .cascade, inverse: \Execution.trade)
     var executions: [Execution] = []

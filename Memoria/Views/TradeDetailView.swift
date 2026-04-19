@@ -468,21 +468,31 @@ struct TradeDetailView: View {
             Divider().background(Color.white.opacity(0.1)).padding(.vertical, 12)
             
             // Notes
-            VStack(alignment: .leading, spacing: 8) {
-                Text("ANALYSIS NOTES")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("ANALYSIS & CONVICTION")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.secondary)
+                    
+                    Spacer()
+                    
+                    StarRatingView(rating: Binding(
+                        get: { trade.confidenceScore },
+                        set: { trade.confidenceScore = $0 }
+                    ), fontSize: 16)
+                }
                 
                 TextEditor(text: Binding(
                     get: { trade.notes ?? "" },
                     set: { trade.notes = $0.isEmpty ? nil : $0 }
                 ))
-                .font(.body)
+                .font(.system(.body, design: .serif))
+                .lineSpacing(4)
                 .scrollContentBackground(.hidden)
-                .frame(minHeight: 80)
-                .padding(8)
+                .frame(minHeight: 120)
+                .padding(12)
                 .background(Color.white.opacity(0.03))
-                .cornerRadius(8)
+                .cornerRadius(12)
             }
             .padding([.horizontal, .bottom], 16)
         }
