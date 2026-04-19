@@ -45,7 +45,7 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("Danger Zone")
+                    Text("Account Data")
                         .foregroundStyle(.red)
                 } footer: {
                     Text("This will permanently delete all your trades and watchlist history. This action cannot be undone.")

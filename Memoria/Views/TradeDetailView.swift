@@ -13,6 +13,8 @@ struct TradeDetailView: View {
     @Bindable var trade: Trade
     
     @State private var showCloseSheet = false
+    @State private var showDeleteAlert = false
+    @State private var showEnlargeSheet = false
     
     var body: some View {
         ScrollView {
@@ -20,21 +22,23 @@ struct TradeDetailView: View {
                 // Header Card
                 headerSection
                 
-                // Entry / Exit Details
-                detailsSection
-                
-                // Targets
-                if trade.stopLoss != nil || trade.takeProfit != nil {
-                    targetsSection
+                HStack(alignment: .top, spacing: 20) {
+                    // Left Column: The Math & Stats
+                    VStack(spacing: 20) {
+                        detailsAndPnLSection
+                        
+                        if trade.stopLoss != nil || trade.takeProfit != nil {
+                            targetsSection
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    
+                    // Right Column: The Media & Notes
+                    VStack(spacing: 20) {
+                        attachmentAndNotesSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .top)
                 }
-                
-                // P&L Section (Closed trades)
-                if trade.status == .closed {
-                    pnlSection
-                }
-                
-                // Notes
-                notesSection
                 
                 // Close Trade Button (Open trades only)
                 if trade.status == .open {
@@ -57,6 +61,20 @@ struct TradeDetailView: View {
         .navigationTitle(trade.ticker)
         .sheet(isPresented: $showCloseSheet) {
             CloseTradeSheet(trade: trade)
+        }
+        .sheet(isPresented: $showEnlargeSheet) {
+            FullScreenImageView(attachmentId: trade.attachmentId)
+        }
+        .alert("Delete Attachment?", isPresented: $showDeleteAlert) {
+            Button("Delete", role: .destructive) {
+                if let id = trade.attachmentId {
+                    LocalAttachmentService.shared.deleteImage(id: id)
+                    trade.attachmentId = nil
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will permanently remove the screenshot from this trade.")
         }
     }
     
@@ -130,29 +148,63 @@ struct TradeDetailView: View {
         )
     }
     
-    private var detailsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("TRADE DETAILS")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.secondary)
-            
-            HStack(spacing: 20) {
-                DetailItem(label: "Entry", value: trade.entryPrice.map { String(format: "$%.2f", $0) } ?? "—")
-                DetailItem(label: "Quantity", value: trade.quantity.map { "\(Int($0))" } ?? "—")
-                DetailItem(label: "Position Size", value: trade.positionSize.map { String(format: "$%.0f", $0) } ?? "—")
+    private var detailsAndPnLSection: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("TRADE DETAILS")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.secondary)
+                
+                Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
+                    GridRow {
+                        DetailItem(label: "Entry", value: trade.entryPrice.map { String(format: "$%.2f", $0) } ?? "—")
+                        DetailItem(label: "Quantity", value: trade.quantity.map { "\(Int($0))" } ?? "—")
+                    }
+                    GridRow {
+                        DetailItem(label: "Size", value: trade.positionSize.map { String(format: "$%.0f", $0) } ?? "—")
+                        if trade.status == .closed {
+                            DetailItem(label: "Exit", value: trade.exitPrice.map { String(format: "$%.2f", $0) } ?? "—")
+                        }
+                    }
+                    if trade.status == .closed {
+                        GridRow {
+                            DetailItem(label: "Closed", value: trade.dateClosed.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? "—")
+                            DetailItem(label: "Held", value: trade.holdingDays.map { "\($0) days" } ?? "—")
+                        }
+                    }
+                }
             }
+            .padding(16)
             
+            // P&L Header (if closed)
             if trade.status == .closed {
                 Divider().background(Color.white.opacity(0.1))
                 
-                HStack(spacing: 20) {
-                    DetailItem(label: "Exit", value: trade.exitPrice.map { String(format: "$%.2f", $0) } ?? "—")
-                    DetailItem(label: "Closed", value: trade.dateClosed.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? "—")
-                    DetailItem(label: "Holding", value: trade.holdingDays.map { "\($0) days" } ?? "—")
+                VStack(spacing: 4) {
+                    if let pnl = trade.pnl {
+                        Text(pnl >= 0 ? "+\(pnl, format: .currency(code: "USD"))" : "\(pnl, format: .currency(code: "USD"))")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundStyle(pnl >= 0 ? Color.green : Color.red)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        if let pct = trade.percentReturn {
+                            Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.2f")%")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        if let r = trade.rMultiple {
+                            Text("\(r >= 0 ? "+" : "")\(r, specifier: "%.1f")R")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.orange)
+                        }
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background((trade.isWin ? Color.green : Color.red).opacity(0.1))
             }
         }
-        .padding(16)
         .background(Color(red: 0.15, green: 0.15, blue: 0.16))
         .cornerRadius(14)
         .overlay(
@@ -188,60 +240,98 @@ struct TradeDetailView: View {
         )
     }
     
-    private var pnlSection: some View {
-        VStack(spacing: 8) {
-            if let pnl = trade.pnl {
-                Text(pnl >= 0 ? "+\(pnl, specifier: "%.2f")" : "\(pnl, specifier: "%.2f")")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(pnl >= 0 ? Color.green : Color.red)
+    private var attachmentAndNotesSection: some View {
+        VStack(spacing: 0) {
+            // Media Header
+            HStack {
+                Text("TECHNICAL SETUP")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if trade.attachmentId != nil {
+                    Button(action: { showDeleteAlert = true }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding([.horizontal, .top], 16)
+            .padding(.bottom, 8)
+            
+            // Image Box
+            ZStack(alignment: .bottomTrailing) {
+                LocalImageView(attachmentId: trade.attachmentId)
+                    .frame(minHeight: 120, maxHeight: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .onTapGesture {
+                        if trade.attachmentId != nil {
+                            showEnlargeSheet = true
+                        }
+                    }
+                
+                if trade.attachmentId != nil {
+                    Button(action: { showEnlargeSheet = true }) {
+                        ZStack(alignment: .bottomTrailing) {
+                            Path { path in
+                                let size: CGFloat = 12
+                                path.move(to: CGPoint(x: 0, y: size))
+                                path.addLine(to: CGPoint(x: size, y: size))
+                                path.addLine(to: CGPoint(x: size, y: 0))
+                            }
+                            .stroke(Color.white.opacity(0.5), lineWidth: 2)
+                            .frame(width: 12, height: 12)
+                            .padding(8)
+                            
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .font(.system(size: 10, weight: .bold))
+                                .padding(6)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Circle())
+                                .padding(4)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+            .dropDestination(for: URL.self) { items, location in
+                guard let itemURL = items.first else { return false }
+                if let newId = LocalAttachmentService.shared.saveImage(from: itemURL) {
+                    if let oldId = trade.attachmentId { LocalAttachmentService.shared.deleteImage(id: oldId) }
+                    trade.attachmentId = newId
+                    return true
+                }
+                return false
             }
             
-            HStack(spacing: 16) {
-                if let pct = trade.percentReturn {
-                    Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.2f")%")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                }
-                if let r = trade.rMultiple {
-                    Text("\(r >= 0 ? "+" : "")\(r, specifier: "%.1f")R")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.orange)
-                }
+            Divider().background(Color.white.opacity(0.1)).padding(.vertical, 12)
+            
+            // Notes
+            VStack(alignment: .leading, spacing: 8) {
+                Text("ANALYSIS NOTES")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.secondary)
+                
+                TextEditor(text: Binding(
+                    get: { trade.notes ?? "" },
+                    set: { trade.notes = $0.isEmpty ? nil : $0 }
+                ))
+                .font(.body)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 80)
+                .padding(8)
+                .background(Color.white.opacity(0.03))
+                .cornerRadius(8)
             }
+            .padding([.horizontal, .bottom], 16)
         }
-        .frame(maxWidth: .infinity)
-        .padding(20)
-        .background(
-            (trade.isWin ? Color.green : Color.red).opacity(0.1)
-        )
+        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke((trade.isWin ? Color.green : Color.red).opacity(0.2), lineWidth: 1)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
-    }
-    
-    private var notesSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("NOTES")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.secondary)
-            
-            TextEditor(text: Binding(
-                get: { trade.notes ?? "" },
-                set: { trade.notes = $0.isEmpty ? nil : $0 }
-            ))
-            .font(.body)
-            .scrollContentBackground(.hidden)
-            .padding(12)
-            .frame(minHeight: 100)
-            .background(Color(red: 0.15, green: 0.15, blue: 0.16))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-            )
-        }
     }
     
     private var closeButton: some View {
@@ -266,6 +356,28 @@ struct TradeDetailView: View {
 
 // MARK: - Supporting Views
 
+struct FullScreenImageView: View {
+    let attachmentId: String?
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                LocalImageView(attachmentId: attachmentId)
+                    .interactiveDismissDisabled(false)
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .frame(minWidth: 600, minHeight: 400)
+    }
+}
+
 struct DetailItem: View {
     let label: String
     let value: String
@@ -281,4 +393,10 @@ struct DetailItem: View {
                 .foregroundStyle(color)
         }
     }
+}
+
+#Preview {
+    TradeDetailView(trade: Trade(ticker: "AAPL"))
+        .modelContainer(for: Trade.self, inMemory: true)
+        .preferredColorScheme(.dark)
 }
