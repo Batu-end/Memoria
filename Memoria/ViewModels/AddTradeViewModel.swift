@@ -65,11 +65,17 @@ class AddTradeViewModel {
         if let p = price, let c = capital, p > 0 {
             trade.quantity = c / p
         }
-        
+
         trade.stopLoss = Double(stopLossString)
         trade.takeProfit = Double(takeProfitString)
         trade.strategy = resolvedStrategy
         trade.notes = notes.isEmpty ? nil : notes
+        
+        // ── Step 3: Record Initial Execution ────────
+        if let p = price, let q = trade.quantity {
+            let initialExecution = Execution(price: p, quantity: q, type: .buy)
+            trade.executions.append(initialExecution)
+        }
         
         context.insert(trade)
         

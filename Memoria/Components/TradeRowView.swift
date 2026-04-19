@@ -56,13 +56,14 @@ struct TradeRowView: View {
                 
                 // Entry info
                 HStack(spacing: 8) {
-                    if let entry = trade.entryPrice {
+                    if let entry = trade.vwap {
                         Text(entry, format: .currency(code: "USD"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     
-                    if let qty = trade.quantity {
+                    let qty = trade.effectiveQuantity
+                    if qty > 0 {
                         Text("×\(Int(qty))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
