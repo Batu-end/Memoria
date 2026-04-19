@@ -15,6 +15,7 @@ struct SettingsView: View {
     @Query private var watchlistItems: [WatchlistItem]
     
     @AppStorage("startingBalance") private var startingBalance: Double = 0.0
+    @AppStorage("traderName") private var traderName: String = ""
     
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
@@ -30,6 +31,18 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    HStack {
+                        Label("Name", systemImage: "person.crop.circle.fill")
+                        TextField("", text: $traderName, prompt: Text("Enter your name"))
+                            .multilineTextAlignment(.trailing)
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(.blue)
+                    }
+                } header: {
+                    Text("Profile")
+                }
+                
                 Section {
                     VStack(spacing: 24) {
                         HStack(spacing: 20) {

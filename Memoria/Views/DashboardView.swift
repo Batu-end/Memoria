@@ -23,6 +23,7 @@ enum BenchmarkTimeframe: String, CaseIterable {
 
 struct DashboardView: View {
     @AppStorage("startingBalance") private var startingBalance: Double = 1600.0
+    @AppStorage("traderName") private var traderName: String = ""
     
     // Live Data Source
     @Query(sort: \Trade.dateAdded, order: .reverse) private var trades: [Trade]
@@ -46,6 +47,18 @@ struct DashboardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                // Header & Personalized Greeting
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Welcome back\(traderName.isEmpty ? "" : ", \(traderName)")")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                    
+                    Text(Date(), format: .dateTime.month().day().year())
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
                 balanceHeroSection
                 activePortfolioSection
                 summaryCards
