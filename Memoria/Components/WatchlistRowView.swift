@@ -12,8 +12,8 @@ struct WatchlistRowView: View {
     let deleteItem: () -> Void
     
     private var strokeColor: Color {
-        if let changeSince = item.changeSinceAdded {
-            return changeSince >= 0 ? .green : .red
+        if let dailyChange = item.priceChangePercent {
+            return dailyChange >= 0 ? .green : .red
         }
         return .purple
     }
@@ -70,7 +70,23 @@ struct WatchlistRowView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            
+            Divider()
+                .frame(height: 30)
+                .padding(.horizontal, 4)
 
+            // Right: Change Since Added
+            if let changeSince = item.changeSinceAdded {
+                VStack(spacing: 2) {
+                    Text("All-Time")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                    
+                    Text("\(changeSince >= 0 ? "+" : "")\(changeSince, specifier: "%.1f")%")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(changeSince >= 0 ? Color.green : Color.red)
+                }
+            }
 
             // Delete button
             Button(action: deleteItem) {
@@ -78,10 +94,11 @@ struct WatchlistRowView: View {
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.secondary)
                     .padding(6)
-                    .background(.ultraThinMaterial)
+                    .background(Color.white.opacity(0.1))
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
+            .padding(.leading, 8)
         }
         .padding(14)
         .background(.ultraThinMaterial)

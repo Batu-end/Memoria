@@ -29,7 +29,6 @@ struct WatchlistView: View {
         NavigationStack {
             ZStack {
                 // Background gradient
-                // Background gradient
                 LinearGradient(
                     colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)],
                     startPoint: .topLeading,
@@ -112,9 +111,9 @@ struct WatchlistView: View {
                 await refreshQuotes()
             }
             .onReceive(refreshTimer) { _ in
-                // Auto-refresh only during market hours
+                // Auto-refresh only during active hours (including pre/post market)
                 let status = MarketService.shared.currentStatus()
-                if status == .open {
+                if status == .open || status == .preMarket || status == .postMarket {
                     Task { await refreshQuotes() }
                 }
             }
