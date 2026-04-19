@@ -17,6 +17,7 @@ final class Trade {
     var takeProfit: Double?
     var strategy: String?       // "Breakout", "Momentum", etc.
     var assetTypeRaw: String?   // "Stock", "ETF" (expandable to "Option", "Crypto" later)
+    var attachmentId: String?   // UUID representing the local OS file mapping
     
     init(ticker: String, status: TradeStatus = .open, side: TradeSide = .long, assetType: AssetType = .stock) {
         self.id = UUID()
