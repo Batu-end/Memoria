@@ -41,6 +41,7 @@ struct DashboardView: View {
     @State private var spyHistoricalData: [HistoricalQuote] = []
     
     @State private var marketStatus: MarketStatus = MarketService.shared.currentStatus()
+    @State private var isDashboardReady = false
     
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     
@@ -73,8 +74,17 @@ struct DashboardView: View {
                 .ignoresSafeArea()
         )
         .task {
+            // Pre-warm all executions to prevent math flickering (Relationship Faulting)
+            for trade in trades {
+                _ = trade.executions.count
+            }
+            
             await fetchLiveQuotes()
             await fetchSpyData()
+            
+            withAnimation(.easeIn(duration: 0.2)) {
+                isDashboardReady = true
+            }
         }
         .onReceive(refreshTimer) { _ in
             let newStatus = MarketService.shared.currentStatus()
@@ -131,6 +141,7 @@ struct DashboardView: View {
         .padding(.top, 20)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity)
+        .opacity(isDashboardReady ? 1 : 0)
     }
     
     // MARK: - Active Portfolio Hub
