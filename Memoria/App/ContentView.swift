@@ -15,6 +15,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Dashboard", systemImage: "square.grid.2x2")
                 }
+                
+            AnalyticsView()
+                .tabItem {
+                    Label("Stats", systemImage: "chart.bar.xaxis.ascending")
+                }
             
             TradesListView()
                 .tabItem {
