@@ -10,11 +10,6 @@ import SwiftData
 import Combine
 import Charts
 
-struct EquityDataPoint: Identifiable {
-    let id = UUID()
-    let date: Date
-    let balance: Double
-}
 
 enum BenchmarkTimeframe: String, CaseIterable {
     case ytd = "YTD"
@@ -277,7 +272,7 @@ struct DashboardView: View {
     
     private var equityCurveSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Cumulative Profit ($)")
+            Text("Account Equity ($)")
                 .font(.headline)
                 .padding(.horizontal)
             

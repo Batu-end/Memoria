@@ -12,9 +12,10 @@ struct StrategyStat: Identifiable {
     }
     
     var winRate: Double {
-        guard !trades.isEmpty else { return 0 }
-        let wins = trades.filter { $0.isWin }.count
-        return Double(wins) / Double(trades.count) * 100
+        let closedTrades = trades.filter { $0.status == .closed && $0.math != nil }
+        guard !closedTrades.isEmpty else { return 0 }
+        let wins = closedTrades.filter { $0.isWin }.count
+        return Double(wins) / Double(closedTrades.count) * 100
     }
     
     var profitFactor: Double {

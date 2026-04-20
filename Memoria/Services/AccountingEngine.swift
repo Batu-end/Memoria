@@ -2,7 +2,9 @@ import Foundation
 import SwiftUI
 import SwiftData
 
+
 // MARK: - Snapshot Models
+
 struct CapturedExecution {
     let price: Double
     let quantity: Double
@@ -57,6 +59,20 @@ class AccountingEngine {
     private var calculationTask: Task<Void, Never>?
     
     private init() {}
+    
+    /// Clears all cached math and trades. Use only for testing or full data resets.
+    func reset() {
+        self.trades = []
+        self.tradeAccounting = [:]
+        self.portfolioState = .empty
+        self.quotes = [:] // Clear market data for test isolation
+    }
+    
+    /// Internal method for testing to simulate price moves.
+    func testOnly_setQuote(ticker: String, price: Double) {
+        let quote = StockQuote(symbol: ticker.uppercased(), currentPrice: price, previousClose: price, change: 0, changePercent: 0)
+        self.quotes[ticker.uppercased()] = quote
+    }
     
     // MARK: - Input updates
     
@@ -127,7 +143,7 @@ class AccountingEngine {
                     if let livePrice = currentQuotes[trade.ticker.uppercased()]?.currentPrice {
                         math.unrealizedPnl = (livePrice - currentVwap) * math.effectiveQuantity * direction
                     }
-                    math.totalPnl = math.realizedPnl + math.unrealizedPnl
+                    math.totalPnl = (math.realizedPnl ?? 0) + math.unrealizedPnl
                 } else {
                     math.unrealizedPnl = 0
                     // For closed trades without explicit executions (legacy or manual), use exitPrice
@@ -143,7 +159,7 @@ class AccountingEngine {
                 }
                 
                 math.positionSize = (math.vwap ?? 0) * math.effectiveQuantity
-                math.winStatus = (math.totalPnl ?? 0) > 0
+                math.winStatus = (math.totalPnl ?? 0) >= 0
                 
                 if let sl = trade.stopLoss, let entry = math.vwap {
                     let risk = abs(entry - sl)
@@ -185,7 +201,7 @@ class AccountingEngine {
             }
             
             // Helper for curve calculation inside the background task
-            func backgroundCurve(closedMath: [TradeAccounting], tradesSnapshot: [CapturedTrade], floating: Double) -> [EquityDataPoint] {
+            func backgroundCurve(closedMath: [TradeAccounting], tradesSnapshot: [CapturedTrade], floating: Double, startingBalance: Double) -> [EquityDataPoint] {
                 var datePoints: [(date: Date, pnl: Double)] = []
                 for math in closedMath {
                     if let trade = tradesSnapshot.first(where: { $0.id == math.tradeId }) {
@@ -197,19 +213,19 @@ class AccountingEngine {
                 var history: [EquityDataPoint] = []
                 var runningPnl = 0.0
                 if let firstDate = sortedPoints.first?.date {
-                    history.append(EquityDataPoint(date: firstDate.addingTimeInterval(-86400), balance: 0))
+                    history.append(EquityDataPoint(date: firstDate.addingTimeInterval(-86400), balance: startingBalance))
                 } else {
-                    history.append(EquityDataPoint(date: Date(), balance: 0))
+                    history.append(EquityDataPoint(date: Date(), balance: startingBalance))
                 }
                 for pt in sortedPoints {
                     runningPnl += pt.pnl
-                    history.append(EquityDataPoint(date: pt.date, balance: runningPnl))
+                    history.append(EquityDataPoint(date: pt.date, balance: startingBalance + runningPnl))
                 }
-                history.append(EquityDataPoint(date: Date(), balance: runningPnl + floating))
+                history.append(EquityDataPoint(date: Date(), balance: startingBalance + runningPnl + floating))
                 return history
             }
             
-            newState.equityCurve = backgroundCurve(closedMath: closedWithPnl, tradesSnapshot: capturedTrades, floating: newState.unrealizedPnl)
+            newState.equityCurve = backgroundCurve(closedMath: closedWithPnl, tradesSnapshot: capturedTrades, floating: newState.unrealizedPnl, startingBalance: balance)
             
             // Max Drawdown calculation
             var peak = newState.equityCurve.first?.balance ?? 0

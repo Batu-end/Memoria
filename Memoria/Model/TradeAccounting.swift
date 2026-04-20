@@ -1,18 +1,21 @@
 import Foundation
 
+struct EquityDataPoint: Identifiable {
+    let id = UUID()
+    let date: Date
+    let balance: Double
+}
+
 /// A lightweight container for individual trade accounting stats.
 struct TradeAccounting {
     var tradeId: UUID
     var vwap: Double?
-    var realizedPnl: Double = 0
+    var effectiveQuantity: Double = 0
+    var realizedPnl: Double?
     var unrealizedPnl: Double = 0
     var totalPnl: Double?
     var percentReturn: Double?
-    var effectiveQuantity: Double = 0
-    var positionSize: Double?
-    var rMultiple: Double?
-    var riskRewardRatio: Double?
+    var positionSize: Double = 0
     var winStatus: Bool = false
-    var entryPrice: Double?
-    var exitPrice: Double?
+    var rMultiple: Double?
 }
