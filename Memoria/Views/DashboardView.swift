@@ -656,30 +656,21 @@ struct DashboardView: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 1) {
+            VStack(alignment: .trailing, spacing: 2) {
                 Text(weekday.uppercased())
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.cyan.opacity(0.6))
-                    .tracking(2)
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.18))
+                    .tracking(3)
 
-                HStack(alignment: .lastTextBaseline, spacing: 3) {
-                    Text(month)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
-                    Text(dayOrdinal)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
+                Text("\(month) \(dayOrdinal)")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.14))
 
                 Text(year)
-                    .font(.system(size: 11, weight: .regular, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.25))
+                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.1))
+                    .tracking(1)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(.white.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.07), lineWidth: 1))
         }
         .padding(.horizontal)
         .padding(.top, 16)
