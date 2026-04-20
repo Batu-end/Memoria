@@ -13,6 +13,12 @@ struct TradeDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var trade: Trade
     
+    var accountingEngine = AccountingEngine.shared
+    
+    var math: TradeAccounting? {
+        accountingEngine.tradeAccounting[trade.id]
+    }
+    
     @State private var showManageSheet = false
     @State private var showDeleteAlert = false
     @State private var showEnlargeSheet = false
@@ -102,7 +108,7 @@ struct TradeDetailView: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                if let r = (trade.status == .open ? currentR : trade.rMultiple) {
+                if let r = math?.rMultiple {
                     Text("\(r >= 0 ? "+" : "")\(r, specifier: "%.2f")R")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(r >= 0 ? .green : .red)
@@ -296,11 +302,11 @@ struct TradeDetailView: View {
                 
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
                     GridRow {
-                        DetailItem(label: "Avg Entry", value: trade.vwap.map { String(format: "$%.2f", $0) } ?? "—")
-                        DetailItem(label: "Active Qty", value: "\(Int(trade.effectiveQuantity))")
+                        DetailItem(label: "Avg Entry", value: math?.vwap.map { String(format: "$%.2f", $0) } ?? "—")
+                        DetailItem(label: "Active Qty", value: "\(Int(math?.effectiveQuantity ?? 0))")
                     }
                     GridRow {
-                        DetailItem(label: "Size", value: trade.positionSize.map { String(format: "$%.0f", $0) } ?? "—")
+                        DetailItem(label: "Size", value: math?.positionSize.map { String(format: "$%.0f", $0) } ?? "—")
                         if trade.status == .closed {
                             DetailItem(label: "Exit", value: trade.exitPrice.map { String(format: "$%.2f", $0) } ?? "—")
                         }
@@ -316,7 +322,7 @@ struct TradeDetailView: View {
             .padding(16)
             
             // P&L Header (Realized or Floating)
-            if let displayPnl = (trade.status == .closed ? trade.pnl : openPnl) {
+            if let displayPnl = math?.totalPnl {
                 Divider().background(Color.white.opacity(0.1))
                 
                 VStack(spacing: 4) {
@@ -336,12 +342,12 @@ struct TradeDetailView: View {
                     .padding(.bottom, 4)
                     
                     HStack(spacing: 12) {
-                        if let pct = (trade.status == .closed ? trade.percentReturn : openPercentReturn) {
+                        if let pct = math?.percentReturn {
                             Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.2f")%")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
-                        if let r = (trade.status == .closed ? trade.rMultiple : currentR) {
+                        if let r = math?.rMultiple {
                             Text("\(r >= 0 ? "+" : "")\(r, specifier: "%.1f")R")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(.orange)
@@ -579,29 +585,9 @@ struct TradeDetailView: View {
         )
     }
     
-    // MARK: - Logic
-    
-    private var currentR: Double? {
-        guard let entry = trade.entryPrice, let sl = trade.stopLoss, let current = livePrice else { return nil }
-        let risk = abs(entry - sl)
-        guard risk > 0 else { return nil }
-        let pnlPerShare = (current - entry) * (trade.side == .long ? 1.0 : -1.0)
-        return pnlPerShare / risk
-    }
-    
-    private var openPnl: Double? {
-        guard let entry = trade.entryPrice, let current = livePrice else { return nil }
-        let qty = trade.quantity ?? 1.0
-        let direction: Double = (trade.side == .short) ? -1.0 : 1.0
-        return (current - entry) * qty * direction
-    }
-    
-    private var openPercentReturn: Double? {
-        guard let entry = trade.entryPrice, let current = livePrice, entry != 0 else { return nil }
-        let direction: Double = (trade.side == .short) ? -1.0 : 1.0
-        return ((current - entry) / entry) * 100.0 * direction
-    }
-    
+    // MARK: - Logic (Now Handled by AccountingEngine)
+    // Legacy properties like currentR, openPnl, etc. have been removed.
+
     private func fetchCurrentPrice() async {
         if let quote = await StockQuoteService.shared.fetchQuote(for: trade.ticker) {
             withAnimation {

@@ -12,6 +12,8 @@ struct TradesListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Trade.dateAdded, order: .reverse) private var allTrades: [Trade]
     
+    var accountingEngine = AccountingEngine.shared
+    
     @State private var selectedFilter: String = "All"
     @State private var showAddTrade = false
     @State private var tradeToClose: Trade?
@@ -29,40 +31,9 @@ struct TradesListView: View {
         }
     }
     
-    // MARK: - Stats for Closed Trades (op.gg-style header)
-    
+    // Stats are now pulled directly from the AccountingEngine
     private var closedTrades: [Trade] {
         allTrades.filter { $0.status == .closed }
-    }
-    
-    private var totalPnl: Double {
-        closedTrades.compactMap { $0.pnl }.reduce(0, +)
-    }
-    
-    private var winCount: Int {
-        closedTrades.filter { $0.isWin }.count
-    }
-    
-    private var lossCount: Int {
-        closedTrades.filter { !$0.isWin && $0.pnl != nil }.count
-    }
-    
-    private var winRate: Double {
-        let total = winCount + lossCount
-        guard total > 0 else { return 0 }
-        return Double(winCount) / Double(total) * 100
-    }
-    
-    private var avgWin: Double {
-        let wins = closedTrades.compactMap { $0.pnl }.filter { $0 > 0 }
-        guard !wins.isEmpty else { return 0 }
-        return wins.reduce(0, +) / Double(wins.count)
-    }
-    
-    private var avgLoss: Double {
-        let losses = closedTrades.compactMap { $0.pnl }.filter { $0 < 0 }
-        guard !losses.isEmpty else { return 0 }
-        return losses.reduce(0, +) / Double(losses.count)
     }
     
     var body: some View {
@@ -154,18 +125,18 @@ struct TradesListView: View {
                     Text("Total P&L")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(totalPnl >= 0 ? "+\(totalPnl, specifier: "%.2f")" : "\(totalPnl, specifier: "%.2f")")
+                    Text(accountingEngine.portfolioState.totalPnl >= 0 ? "+\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")" : "\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(totalPnl >= 0 ? Color.green : Color.red)
+                        .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Win Rate")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(winRate, specifier: "%.0f")%")
+                    Text("\(accountingEngine.portfolioState.winRate, specifier: "%.0f")%")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(winRate >= 50 ? Color.green : Color.orange)
+                        .foregroundStyle(accountingEngine.portfolioState.winRate >= 50 ? Color.green : Color.orange)
                 }
             }
             
@@ -173,8 +144,8 @@ struct TradesListView: View {
             
             // Bottom row: W/L record + Avg Win/Loss
             HStack(spacing: 20) {
-                StatPill(label: "W", value: "\(winCount)", color: .green)
-                StatPill(label: "L", value: "\(lossCount)", color: .red)
+                StatPill(label: "W", value: "\(accountingEngine.portfolioState.winCount)", color: .green)
+                StatPill(label: "L", value: "\(accountingEngine.portfolioState.lossCount)", color: .red)
                 
                 Spacer()
                 
@@ -182,7 +153,7 @@ struct TradesListView: View {
                     Text("Avg Win")
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
-                    Text("+\(avgWin, specifier: "%.2f")")
+                    Text("+\(accountingEngine.portfolioState.avgWin, specifier: "%.2f")")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.green)
                 }
@@ -191,7 +162,7 @@ struct TradesListView: View {
                     Text("Avg Loss")
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
-                    Text("\(avgLoss, specifier: "%.2f")")
+                    Text("\(accountingEngine.portfolioState.avgLoss, specifier: "%.2f")")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.red)
                 }
