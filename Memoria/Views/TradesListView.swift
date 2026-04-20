@@ -72,8 +72,9 @@ struct TradesListView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddTrade = true }) {
-                        Image(systemName: "plus")
+                        Label("New Trade", systemImage: "plus")
                     }
+                    .labelStyle(.titleAndIcon)
                     .help("Add Trade")
                 }
             }
