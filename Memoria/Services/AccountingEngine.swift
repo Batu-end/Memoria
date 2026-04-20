@@ -202,11 +202,17 @@ class AccountingEngine {
             
             // Helper for curve calculation inside the background task
             func backgroundCurve(closedMath: [TradeAccounting], tradesSnapshot: [CapturedTrade], floating: Double, startingBalance: Double) -> [EquityDataPoint] {
-                var datePoints: [(date: Date, pnl: Double)] = []
+                struct TradePoint {
+                    let date: Date
+                    let pnl: Double
+                    let isWin: Bool
+                    let ticker: String
+                }
+                var datePoints: [TradePoint] = []
                 for math in closedMath {
                     if let trade = tradesSnapshot.first(where: { $0.id == math.tradeId }) {
                         let date = trade.dateClosed ?? trade.dateAdded
-                        datePoints.append((date: date, pnl: math.totalPnl ?? 0))
+                        datePoints.append(TradePoint(date: date, pnl: math.totalPnl ?? 0, isWin: math.winStatus, ticker: trade.ticker))
                     }
                 }
                 let sortedPoints = datePoints.sorted { $0.date < $1.date }
@@ -219,7 +225,7 @@ class AccountingEngine {
                 }
                 for pt in sortedPoints {
                     runningPnl += pt.pnl
-                    history.append(EquityDataPoint(date: pt.date, balance: startingBalance + runningPnl))
+                    history.append(EquityDataPoint(date: pt.date, balance: startingBalance + runningPnl, isTrade: true, isWin: pt.isWin, ticker: pt.ticker))
                 }
                 history.append(EquityDataPoint(date: Date(), balance: startingBalance + runningPnl + floating))
                 return history

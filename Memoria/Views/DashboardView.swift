@@ -61,7 +61,7 @@ struct DashboardView: View {
             .padding(.bottom, 40)
         }
         .background(
-            LinearGradient(colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.11), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
         )
         .task {
@@ -131,20 +131,20 @@ struct DashboardView: View {
     }
     
     // MARK: - Active Portfolio Hub
-    
+
     private var activePortfolioSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Active Portfolio")
                 .font(.headline)
                 .padding(.horizontal)
-            
+
+            // Summary cards
             HStack(spacing: 15) {
-                // Floating P&L
                 VStack(alignment: .leading, spacing: 4) {
                     Text("UNREALIZED P&L")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                    
+
                     HStack(alignment: .lastTextBaseline, spacing: 4) {
                         Text(accountingEngine.portfolioState.unrealizedPnl >= 0 ? "+" : "")
                             .font(.system(size: 14, weight: .bold))
@@ -153,7 +153,7 @@ struct DashboardView: View {
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundStyle(accountingEngine.portfolioState.unrealizedPnl >= 0 ? .green : .red)
                     }
-                    
+
                     Text("\(accountingEngine.portfolioState.unrealizedReturn >= 0 ? "+" : "")\(accountingEngine.portfolioState.unrealizedReturn, specifier: "%.2f")%")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
@@ -163,17 +163,16 @@ struct DashboardView: View {
                 .background(.ultraThinMaterial)
                 .cornerRadius(12)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
-                
-                // Open Exposure
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("OPEN EXPOSURE")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                    
+
                     Text(accountingEngine.portfolioState.totalExposure, format: .currency(code: "USD"))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(.blue)
-                    
+
                     Text("\(accountingEngine.portfolioState.openTradesCount) Active Positions")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
@@ -185,7 +184,87 @@ struct DashboardView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
             }
             .padding(.horizontal)
+
+            // Mini position list
+            if !openTrades.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(openTrades) { trade in
+                        miniPositionRow(trade)
+                    }
+                }
+                .padding(.horizontal)
+            }
         }
+    }
+
+    private func miniPositionRow(_ trade: Trade) -> some View {
+        let math = accountingEngine.tradeAccounting[trade.id]
+        let unrealized = math?.unrealizedPnl ?? 0
+        let exposure = accountingEngine.portfolioState.totalExposure
+        let posSize = math?.positionSize ?? 0
+        let exposurePct = exposure > 0 ? (posSize / exposure) * 100 : 0
+
+        return HStack(spacing: 10) {
+            // Ticker + side
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Text(trade.ticker.uppercased())
+                        .font(.system(size: 13, weight: .bold))
+                    Text(trade.side == .long ? "L" : "S")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundStyle(trade.side == .long ? .green : .red)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background((trade.side == .long ? Color.green : Color.red).opacity(0.15))
+                        .clipShape(Capsule())
+                }
+                if let vwap = math?.vwap {
+                    Text(vwap, format: .currency(code: "USD"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Exposure bar
+            if exposurePct > 0 {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(String(format: "%.0f%% exposure", exposurePct))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.white.opacity(0.08))
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(exposurePct > 30 ? Color.orange : Color.blue)
+                                .frame(width: geo.size.width * min(exposurePct / 100, 1))
+                        }
+                    }
+                    .frame(width: 60, height: 4)
+                }
+            }
+
+            // Stop distance
+            if let vwap = math?.vwap, let sl = trade.stopLoss, vwap > 0 {
+                let dist = ((sl - vwap) / vwap) * 100 * (trade.side == .short ? -1 : 1)
+                Text("SL \(dist >= 0 ? "+" : "")\(dist, specifier: "%.1f")%")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(dist < -5 ? Color.red : Color.secondary)
+            }
+
+            // Unrealized P&L
+            Text(unrealized >= 0 ? "+\(unrealized, specifier: "%.2f")" : "\(unrealized, specifier: "%.2f")")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(unrealized >= 0 ? .green : .red)
+                .frame(minWidth: 70, alignment: .trailing)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+        .cornerRadius(10)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.07), lineWidth: 1))
     }
     
     // MARK: - Summary Cards (Metrics)
@@ -257,11 +336,13 @@ struct DashboardView: View {
     }
     
     // MARK: - Equity Curve
-    
+
+    @State private var scrubbedPoint: EquityDataPoint? = nil
+
     private var isEquityPositive: Bool {
         accountingEngine.portfolioState.totalPnl >= 0
     }
-    
+
     private var yDomain: ClosedRange<Double> {
         let profits = accountingEngine.portfolioState.equityCurve.map { $0.balance }
         let minP = (profits.min() ?? 0) - 100
@@ -269,60 +350,152 @@ struct DashboardView: View {
         guard maxP > minP else { return -100...100 }
         return minP...maxP
     }
-    
+
+    /// Running-peak balance at each point — used to shade drawdown regions.
+    private var peakAtEachPoint: [Double] {
+        var peak = accountingEngine.portfolioState.equityCurve.first?.balance ?? 0
+        return accountingEngine.portfolioState.equityCurve.map { pt in
+            if pt.balance > peak { peak = pt.balance }
+            return peak
+        }
+    }
+
     private var equityCurveSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Account Equity ($)")
-                .font(.headline)
-                .padding(.horizontal)
-            
+            HStack {
+                Text("Account Equity ($)")
+                    .font(.headline)
+                Spacer()
+                if let pt = scrubbedPoint {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(pt.balance, format: .currency(code: "USD"))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(pt.balance >= (accountingEngine.portfolioState.equityCurve.first?.balance ?? 0) ? .green : .red)
+                        Text(pt.date, format: .dateTime.month(.abbreviated).day().year())
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        if let ticker = pt.ticker {
+                            Text(ticker)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .transition(.opacity)
+                }
+            }
+            .padding(.horizontal)
+
             VStack {
                 if accountingEngine.portfolioState.equityCurve.count < 2 {
-                    ContentUnavailableView("Not Enough Data", systemImage: "chart.line.uptrend.xyaxis", description: Text("Close at least one trade to automatically generate your equity curve."))
-                        .frame(height: 200)
+                    ContentUnavailableView(
+                        "Not Enough Data",
+                        systemImage: "chart.line.uptrend.xyaxis",
+                        description: Text("Close at least one trade to automatically generate your equity curve.")
+                    )
+                    .frame(height: 220)
                 } else {
+                    let curve = accountingEngine.portfolioState.equityCurve
+                    let peaks = peakAtEachPoint
+                    let lineColor: Color = isEquityPositive ? .green : .red
+
                     Chart {
-                        ForEach(accountingEngine.portfolioState.equityCurve) { point in
-                            LineMark(
-                                x: .value("Time", point.date),
-                                y: .value("Profit", point.balance)
-                            )
-                            .interpolationMethod(.monotone)
-                            .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
-                            .lineStyle(StrokeStyle(lineWidth: 3))
-                            
+                        // Base fill gradient
+                        ForEach(curve) { point in
                             AreaMark(
                                 x: .value("Time", point.date),
-                                yStart: .value("Min Balance", yDomain.lowerBound),
+                                yStart: .value("Floor", yDomain.lowerBound),
                                 yEnd: .value("Balance", point.balance)
                             )
                             .interpolationMethod(.monotone)
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [
-                                        (accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red).opacity(0.3),
-                                        .clear
-                                    ],
+                                    colors: [lineColor.opacity(0.25), .clear],
                                     startPoint: .top,
                                     endPoint: .bottom
                                 )
                             )
+                        }
+
+                        // Drawdown shading: red fill from peak down to balance
+                        ForEach(Array(zip(curve, peaks).enumerated()), id: \.offset) { _, pair in
+                            let (pt, peak) = pair
+                            if pt.balance < peak - 0.01 {
+                                AreaMark(
+                                    x: .value("Time", pt.date),
+                                    yStart: .value("Balance", pt.balance),
+                                    yEnd: .value("Peak", peak)
+                                )
+                                .interpolationMethod(.monotone)
+                                .foregroundStyle(Color.red.opacity(0.18))
+                            }
+                        }
+
+                        // Main equity line
+                        ForEach(curve) { point in
+                            LineMark(
+                                x: .value("Time", point.date),
+                                y: .value("Balance", point.balance)
+                            )
+                            .interpolationMethod(.monotone)
+                            .foregroundStyle(lineColor)
+                            .lineStyle(StrokeStyle(lineWidth: 2.5))
+                        }
+
+                        // Trade markers
+                        ForEach(curve.filter { $0.isTrade }) { point in
+                            PointMark(
+                                x: .value("Time", point.date),
+                                y: .value("Balance", point.balance)
+                            )
+                            .symbolSize(50)
+                            .foregroundStyle(point.isWin == true ? Color.green : Color.red)
+                        }
+
+                        // Scrub rule + dot
+                        if let pt = scrubbedPoint {
+                            RuleMark(x: .value("Scrub", pt.date))
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                                .foregroundStyle(Color.white.opacity(0.4))
+                            PointMark(
+                                x: .value("Time", pt.date),
+                                y: .value("Balance", pt.balance)
+                            )
+                            .symbolSize(120)
+                            .foregroundStyle(Color.white)
                         }
                     }
                     .chartYScale(domain: yDomain)
                     .chartXAxis {
                         AxisMarks(preset: .aligned, position: .bottom)
                     }
-                    .frame(height: 200)
+                    .frame(height: 220)
+                    .chartOverlay { proxy in
+                        GeometryReader { geo in
+                            Rectangle()
+                                .fill(.clear)
+                                .contentShape(Rectangle())
+                                .gesture(
+                                    DragGesture(minimumDistance: 0)
+                                        .onChanged { value in
+                                            let x = value.location.x - geo[proxy.plotFrame!].origin.x
+                                            if let date: Date = proxy.value(atX: x) {
+                                                scrubbedPoint = curve.min(by: {
+                                                    abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
+                                                })
+                                            }
+                                        }
+                                        .onEnded { _ in
+                                            withAnimation(.easeOut(duration: 0.2)) { scrubbedPoint = nil }
+                                        }
+                                )
+                        }
+                    }
                 }
             }
             .padding()
             .background(.ultraThinMaterial)
             .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-            )
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
             .padding(.horizontal)
         }
     }
@@ -443,17 +616,73 @@ struct DashboardView: View {
     
     // MARK: - Sub-views (Refactored to improve compiler performance)
     
+    private var timeOfDayLabel: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 0..<12: return "GOOD MORNING"
+        case 12..<17: return "GOOD AFTERNOON"
+        default: return "GOOD EVENING"
+        }
+    }
+
+    private var dayOrdinal: String {
+        let day = Calendar.current.component(.day, from: Date())
+        let suffix: String
+        switch day {
+        case 11, 12, 13: suffix = "th"
+        case _ where day % 10 == 1: suffix = "st"
+        case _ where day % 10 == 2: suffix = "nd"
+        case _ where day % 10 == 3: suffix = "rd"
+        default: suffix = "th"
+        }
+        return "\(day)\(suffix)"
+    }
+
     private var headerView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(personalizedGreeting)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-            
-            Text(Date(), format: .dateTime.month().day().year())
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        let name = traderName.isEmpty ? "Trader" : traderName
+        let weekday = Date().formatted(.dateTime.weekday(.wide))
+        let month = Date().formatted(.dateTime.month(.wide))
+        let year = Date().formatted(.dateTime.year())
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(timeOfDayLabel),")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.cyan)
+                    .tracking(3)
+
+                Text(name)
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(weekday.uppercased())
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.cyan.opacity(0.6))
+                    .tracking(2)
+
+                HStack(alignment: .lastTextBaseline, spacing: 3) {
+                    Text(month)
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                    Text(dayOrdinal)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+
+                Text(year)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.25))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(.white.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.07), lineWidth: 1))
         }
         .padding(.horizontal)
-        .padding(.top, 16) // Increased top padding for the refactored layout
+        .padding(.top, 16)
     }
     
     // MARK: - Lifecycle Logic
@@ -492,6 +721,7 @@ struct DashboardView: View {
     private var personalizedGreeting: String {
         traderName.isEmpty ? "Welcome back" : "Welcome back, \(traderName)"
     }
+    
     
     private func fetchLiveQuotes() async {
         let tickers = Array(Set(trades.filter { $0.status == .open }.map { $0.ticker } + watchlistItems.map { $0.ticker }))

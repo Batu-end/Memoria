@@ -23,6 +23,12 @@ class AddTradeViewModel {
     var takeProfitString: String = ""
     var notes: String = ""
     var confidenceScore: Int = 0
+
+    // Past trade mode
+    var isPastTrade: Bool = false
+    var openDate: Date = Date()
+    var exitPriceString: String = ""
+    var closeDate: Date = Date()
     
     // MARK: - Validation
     
@@ -42,8 +48,16 @@ class AddTradeViewModel {
         takeProfitString.isEmpty || Double(takeProfitString) != nil
     }
     
+    var isValidExitPrice: Bool {
+        exitPriceString.isEmpty || Double(exitPriceString) != nil
+    }
+
     var isValidForm: Bool {
-        !ticker.isEmpty && !priceString.isEmpty && isValidPrice && isValidCapital && isValidStopLoss && isValidTakeProfit
+        guard !ticker.isEmpty && !priceString.isEmpty && isValidPrice && isValidCapital && isValidStopLoss && isValidTakeProfit else { return false }
+        if isPastTrade {
+            return !exitPriceString.isEmpty && isValidExitPrice
+        }
+        return true
     }
     
     /// The resolved strategy string — uses custom if "Other" is selected
@@ -58,11 +72,13 @@ class AddTradeViewModel {
     // MARK: - Actions
     
     func addTrade(context: ModelContext) {
-        let trade = Trade(ticker: ticker.uppercased(), status: .open, side: side, assetType: assetType)
+        let status: TradeStatus = isPastTrade ? .closed : .open
+        let trade = Trade(ticker: ticker.uppercased(), status: status, side: side, assetType: assetType)
         let price = Double(priceString)
         let capital = Double(capitalString)
-        
+
         trade.entryPrice = price
+        trade.dateAdded = isPastTrade ? openDate : Date()
         if let p = price, let c = capital, p > 0 {
             trade.quantity = c / p
         }
@@ -72,15 +88,26 @@ class AddTradeViewModel {
         trade.strategy = resolvedStrategy
         trade.notes = notes.isEmpty ? nil : notes
         trade.confidenceScore = confidenceScore
-        
-        // ── Step 3: Record Initial Execution ────────
+
+        // Opening execution
+        let openExecType: ExecutionType = side == .long ? .buy : .sell
         if let p = price, let q = trade.quantity {
-            let initialExecution = Execution(price: p, quantity: q, type: .buy)
-            trade.executions.append(initialExecution)
+            let openExec = Execution(price: p, quantity: q, type: openExecType, date: isPastTrade ? openDate : Date())
+            trade.executions.append(openExec)
         }
-        
+
+        // Closing execution (past trades only)
+        if isPastTrade, let exitPrice = Double(exitPriceString), let q = trade.quantity {
+            let closeExecType: ExecutionType = side == .long ? .sell : .buy
+            let closeExec = Execution(price: exitPrice, quantity: q, type: closeExecType, date: closeDate)
+            trade.executions.append(closeExec)
+            trade.exitPrice = exitPrice
+            trade.dateClosed = closeDate
+        }
+
         context.insert(trade)
-        
-        AnalyticsService.shared.log(.tradeOpened, details: "Ticker: \(ticker), Side: \(side.rawValue)", context: context)
+
+        let logType: AnalyticsEvent = isPastTrade ? .tradeClosed : .tradeOpened
+        AnalyticsService.shared.log(logType, details: "Ticker: \(ticker), Side: \(side.rawValue)", context: context)
     }
 }

@@ -31,7 +31,7 @@ struct ScalePositionSheet: View {
     }
     
     private var price: Double? { Double(priceString) }
-    private var quantity: Double? { Double(quantityString) }
+    private var quantity: Double? { Double(quantityString.replacingOccurrences(of: ",", with: "")) }
     
     /// Instant calculation from executions to ensure UI responsiveness
     private var realTimeEffectiveQuantity: Double {
@@ -110,9 +110,12 @@ struct ScalePositionSheet: View {
                         
                         if type == .sell {
                             Button("Max") {
-                                let maxVal = realTimeEffectiveQuantity * (price ?? 0)
-                                amountString = String(format: "%.2f", maxVal)
-                                syncFromAmount(amountString)
+                                // Truncate (floor) to 4dp — rounding up would exceed actual
+                                // holding and fail the q <= realTimeEffectiveQuantity check
+                                let truncated = floor(realTimeEffectiveQuantity * 10000) / 10000
+                                let raw = String(format: "%.4f", truncated)
+                                quantityString = raw.replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
+                                syncFromQuantity(quantityString)
                             }
                             .font(.caption2)
                             .buttonStyle(.borderedProminent)
@@ -189,16 +192,10 @@ struct ScalePositionSheet: View {
         let cleaned = newValue.replacingOccurrences(of: "$", with: "").replacingOccurrences(of: ",", with: "")
         guard let amount = Double(cleaned), let p = price, p > 0 else { return }
         let calculatedQty = amount / p
-        // Use up to 4 decimal places, but strip trailing zeros
-        let formatter = NumberFormatter()
-        formatter.maximumFractionDigits = 4
-        formatter.minimumFractionDigits = 0
-        formatter.numberStyle = .decimal
-        
-        if let newQtyString = formatter.string(from: NSNumber(value: calculatedQty)) {
-            if quantityString != newQtyString {
-                quantityString = newQtyString
-            }
+        let raw = String(format: "%.4f", calculatedQty)
+        let newQtyString = raw.replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
+        if quantityString != newQtyString {
+            quantityString = newQtyString
         }
     }
     
@@ -218,8 +215,8 @@ struct ScalePositionSheet: View {
         let execution = Execution(price: p, quantity: q, type: type, date: date)
         trade.executions.append(execution)
         
-        // Auto-close logic
-        if realTimeEffectiveQuantity == 0 {
+        // Auto-close logic (use epsilon to handle floating-point residue)
+        if abs(realTimeEffectiveQuantity) < 0.0001 {
             trade.status = .closed
             trade.dateClosed = date
             trade.exitPrice = p // Use last sell price as master exit price

@@ -38,7 +38,7 @@ struct TradeDetailView: View {
                 
                 HStack(alignment: .top, spacing: 20) {
                     // Left Column: The Math & Stats
-                    VStack(spacing: 20) {
+                    VStack(spacing: 16) {
                         detailsAndPnLSection
                         
                         if trade.stopLoss != nil || trade.takeProfit != nil {
@@ -47,24 +47,19 @@ struct TradeDetailView: View {
                         }
                         
                         executionChecklistSection
+                        
+                        #if DEBUG
+                        debugMathSection
+                        #endif
                     }
                     .frame(maxWidth: .infinity, alignment: .top)
                     
                     // Right Column: The Media & Notes
-                    VStack(spacing: 20) {
+                    VStack(spacing: 16) {
                         attachmentAndNotesSection
                         executionHistorySection
                     }
                     .frame(maxWidth: .infinity, alignment: .top)
-                }
-                
-                #if DEBUG
-                debugMathSection
-                #endif
-                
-                // Manage Position Button (Open trades only)
-                if trade.status == .open {
-                    manageButton
                 }
             }
             .padding()
@@ -87,6 +82,24 @@ struct TradeDetailView: View {
             if trade.status == .open { Task { await fetchCurrentPrice() } }
         }
         .navigationTitle(trade.ticker)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                if trade.status == .open {
+                    Button(action: { showManageSheet = true }) {
+                        Label("Manage", systemImage: "slider.horizontal.3")
+                    }
+                    .help("Scale In/Out or Add Executions")
+                }
+                
+                Button(role: .destructive) {
+                    showDeleteAlert = true
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                        .foregroundStyle(.red)
+                }
+                .help("Delete Trade")
+            }
+        }
         .sheet(isPresented: $showManageSheet) {
             ScalePositionSheet(trade: trade, livePrice: livePrice)
         }
@@ -515,25 +528,6 @@ struct TradeDetailView: View {
             RoundedRectangle(cornerRadius: 14)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
-    }
-    
-    private var manageButton: some View {
-        Button(action: { showManageSheet = true }) {
-            HStack {
-                Image(systemName: "slider.horizontal.3")
-                Text("Manage Position")
-                    .font(.headline)
-            }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(
-                LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing)
-            )
-            .cornerRadius(16)
-            .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
-        }
-        .buttonStyle(.plain)
     }
     
     private var executionHistorySection: some View {
