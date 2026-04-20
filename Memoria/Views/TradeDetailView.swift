@@ -22,6 +22,8 @@ struct TradeDetailView: View {
         engine.tradeAccounting[trade.id]
     }
     
+    @AppStorage("mathEngineInspector") private var mathEngineInspectorEnabled: Bool = false
+
     @State private var showManageSheet = false
     @State private var showDeleteAlert = false
     @State private var showEnlargeSheet = false
@@ -48,9 +50,9 @@ struct TradeDetailView: View {
                         
                         executionChecklistSection
                         
-                        #if DEBUG
-                        debugMathSection
-                        #endif
+                        if mathEngineInspectorEnabled {
+                            debugMathSection
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .top)
                     
@@ -598,8 +600,7 @@ struct TradeDetailView: View {
     }
     
     // MARK: - Debug
-    
-    #if DEBUG
+
     private var debugMathSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -647,7 +648,6 @@ struct TradeDetailView: View {
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
         }
     }
-    #endif
 }
 
 // MARK: - Supporting Views

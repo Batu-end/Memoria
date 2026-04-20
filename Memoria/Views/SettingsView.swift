@@ -17,6 +17,8 @@ struct SettingsView: View {
     @AppStorage("startingBalance") private var startingBalance: Double = 0.0
     @AppStorage("traderName") private var traderName: String = ""
     
+    @AppStorage("mathEngineInspector") private var mathEngineInspectorEnabled: Bool = false
+
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
     
@@ -110,6 +112,16 @@ struct SettingsView: View {
                     Text("Account Balance = Contributions + Trading Profits. If your contribution is negative, you are playing with 'House Money' (withdrawn more than you deposited).")
                 }
                 
+                Section {
+                    Toggle(isOn: $mathEngineInspectorEnabled) {
+                        Label("Math Engine Inspector", systemImage: "function")
+                    }
+                } header: {
+                    Text("Developer Tools")
+                } footer: {
+                    Text("Shows live accounting engine state in the Dashboard for debugging.")
+                }
+
                 Section {
                     Button(role: .destructive) {
                         confirmationText = ""
