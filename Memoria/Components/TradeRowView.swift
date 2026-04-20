@@ -9,10 +9,15 @@ import SwiftUI
 
 struct TradeRowView: View {
     let trade: Trade
+    var accountingEngine = AccountingEngine.shared
+    
+    var math: TradeAccounting? {
+        accountingEngine.tradeAccounting[trade.id]
+    }
     
     private var strokeColor: Color {
         if trade.status == .closed {
-            if let pnl = trade.pnl {
+            if let pnl = math?.totalPnl {
                 return pnl >= 0 ? .green : .red
             }
             return .purple
@@ -68,13 +73,13 @@ struct TradeRowView: View {
                 
                 // Entry info
                 HStack(spacing: 8) {
-                    if let entry = trade.vwap {
+                    if let entry = math?.vwap {
                         Text(entry, format: .currency(code: "USD"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     
-                    let qty = trade.effectiveQuantity
+                    let qty = math?.effectiveQuantity ?? 0
                     if qty > 0 {
                         Text("×\(Int(qty))")
                             .font(.caption)
@@ -102,12 +107,12 @@ struct TradeRowView: View {
             
             // Right: P&L or Status
             VStack(alignment: .trailing, spacing: 4) {
-                if trade.status == .closed, let pnl = trade.pnl {
+                if trade.status == .closed, let pnl = math?.totalPnl {
                     Text(pnl >= 0 ? "+\(pnl, specifier: "%.2f")" : "\(pnl, specifier: "%.2f")")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(pnl >= 0 ? Color.green : Color.red)
                     
-                    if let pct = trade.percentReturn {
+                    if let pct = math?.percentReturn {
                         Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.1f")%")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle((pct >= 0 ? Color.green : Color.red).opacity(0.8))

@@ -9,7 +9,7 @@
 import Foundation
 
 /// Represents a single stock quote
-struct StockQuote {
+struct StockQuote: Equatable {
     let symbol: String
     let currentPrice: Double
     let previousClose: Double
@@ -17,7 +17,7 @@ struct StockQuote {
     let changePercent: Double
 }
 
-struct HistoricalQuote: Identifiable {
+struct HistoricalQuote: Identifiable, Equatable {
     let id = UUID()
     let date: Date
     let close: Double
