@@ -80,22 +80,24 @@ struct WatchlistView: View {
             }
             .navigationTitle("Watchlist")
             .toolbar {
-                // Refresh button
-                ToolbarItem(placement: .automatic) {
-                    Button(action: { Task { await refreshQuotes() } }) {
-                        Image(systemName: "arrow.clockwise")
-                            .rotationEffect(.degrees(isRefreshing ? 360 : 0))
-                            .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
-                    }
-                    .help("Refresh Prices")
-                    .disabled(isRefreshing)
-                }
+                // // Refresh button
+                // ToolbarItem(placement: .automatic) {
+                //     Button(action: { Task { await refreshQuotes() } }) {
+                //         Image(systemName: "arrow.clockwise")
+                //             .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                //             .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                //     }
+                //     .labelStyle(.titleAndIcon)
+                //     .help("Refresh Prices")
+                //     .disabled(isRefreshing)
+                // }
                 
                 // Add button
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddItem = true }) {
-                        Image(systemName: "plus")
+                        Label("Add Symbol", systemImage: "plus")
                     }
+                    .labelStyle(.titleAndIcon)
                     .help("Add to Watchlist")
                 }
             }
