@@ -60,7 +60,8 @@ final class Trade {
     }
     
     var isWin: Bool {
-        (math?.totalPnl ?? 0) > 0
+        guard let pnl = math?.totalPnl else { return false }
+        return pnl >= 0
     }
     
     var holdingDays: Int? {
@@ -72,9 +73,9 @@ final class Trade {
         guard let entry = entryPrice ?? math?.vwap,
               let sl = stopLoss,
               let tp = takeProfit else { return nil }
-        let risk = abs(entry - sl)
-        let reward = abs(tp - entry)
-        return (risk > 0) ? (reward / risk) : nil
+        let risk: Double = abs(entry - sl)
+        let reward: Double = abs(tp - entry)
+        return (risk > 0) ? Double(reward / risk) : nil
     }
 }
 

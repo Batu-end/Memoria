@@ -58,6 +58,10 @@ struct TradeDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .top)
                 }
                 
+                #if DEBUG
+                debugMathSection
+                #endif
+                
                 // Manage Position Button (Open trades only)
                 if trade.status == .open {
                     manageButton
@@ -305,13 +309,13 @@ struct TradeDetailView: View {
                 
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
                     GridRow {
-                        DetailItem(label: "Avg Entry", value: math?.vwap.map { String(format: "$%.2f", $0) } ?? "—")
+                        DetailItem(label: "Avg Entry", value: math?.vwap != nil ? String(format: "$%.2f", math!.vwap!) : "—")
                         DetailItem(label: "Active Qty", value: "\(Int(math?.effectiveQuantity ?? 0))")
                     }
                     GridRow {
-                        DetailItem(label: "Size", value: math?.positionSize.map { String(format: "$%.0f", $0) } ?? "—")
+                        DetailItem(label: "Size", value: math != nil ? String(format: "$%.0f", math!.positionSize) : "—")
                         if trade.status == .closed {
-                            DetailItem(label: "Exit", value: trade.exitPrice.map { String(format: "$%.2f", $0) } ?? "—")
+                            DetailItem(label: "Exit", value: trade.exitPrice != nil ? String(format: "$%.2f", trade.exitPrice!) : "—")
                         }
                     }
                     if trade.status == .closed {
@@ -598,6 +602,58 @@ struct TradeDetailView: View {
             }
         }
     }
+    
+    // MARK: - Debug
+    
+    #if DEBUG
+    private var debugMathSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "cpu")
+                Text("Math Engine Inspector")
+                    .font(.system(size: 11, weight: .bold))
+            }
+            .foregroundStyle(.orange)
+            .padding(.bottom, 4)
+            
+            if let m = math {
+                Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 10) {
+                    GridRow {
+                        debugItem(label: "VWAP", value: String(format: "%.2f", m.vwap ?? 0))
+                        debugItem(label: "EFF. QTY", value: String(format: "%.2f", m.effectiveQuantity))
+                    }
+                    GridRow {
+                        debugItem(label: "REALIZED", value: String(format: "%.2f", m.realizedPnl ?? 0))
+                        debugItem(label: "UNREALIZED", value: String(format: "%.2f", m.unrealizedPnl ?? 0))
+                    }
+                    GridRow {
+                        debugItem(label: "TOTAL PNL", value: String(format: "%.2f", m.totalPnl ?? 0))
+                        debugItem(label: "WIN STATUS", value: m.winStatus ? "WIN (>=0)" : "LOSE")
+                    }
+                }
+            } else {
+                Text("No math snapshot available for this trade.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .background(Color.orange.opacity(0.05))
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.2), lineWidth: 1))
+        .padding(.horizontal)
+    }
+    
+    private func debugItem(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+        }
+    }
+    #endif
 }
 
 // MARK: - Supporting Views
