@@ -11,27 +11,33 @@ import Combine
 
 struct WatchlistView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \WatchlistItem.dateAdded, order: .reverse)
+    @Query(sort: [SortDescriptor(\WatchlistItem.sortOrder), SortDescriptor(\WatchlistItem.dateAdded, order: .reverse)])
     private var watchlistItems: [WatchlistItem]
-    
+
     @State private var showAddItem = false
     @State private var isRefreshing = false
     @State private var lastRefreshTime: Date?
-    
-    // Auto-refresh timer (fires every 30 seconds)
+
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
-    
+
     private func deleteItem(_ item: WatchlistItem) {
         modelContext.delete(item)
     }
-    
+
+    private func moveItems(from source: IndexSet, to destination: Int) {
+        var reordered = watchlistItems
+        reordered.move(fromOffsets: source, toOffset: destination)
+        for (index, item) in reordered.enumerated() {
+            item.sortOrder = index
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background gradient
                 LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.11), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
-                
+
                 if watchlistItems.isEmpty {
                     ContentUnavailableView(
                         "No items in Watchlist",
@@ -39,56 +45,47 @@ struct WatchlistView: View {
                         description: Text("Add a stock to start tracking live prices.")
                     )
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 8) {
-                            // Refresh status bar
-                            if let lastRefresh = lastRefreshTime {
-                                HStack {
-                                    if isRefreshing {
-                                        ProgressView()
-                                            .scaleEffect(0.7)
-                                            .frame(width: 12, height: 12)
-                                        Text("Refreshing...")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    } else {
-                                        Image(systemName: "clock")
-                                            .font(.system(size: 9))
-                                            .foregroundStyle(.secondary)
-                                        Text("Updated \(lastRefresh, format: .dateTime.hour().minute())")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
+                    VStack(spacing: 0) {
+                        // Refresh status bar
+                        if let lastRefresh = lastRefreshTime {
+                            HStack {
+                                if isRefreshing {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .frame(width: 12, height: 12)
+                                    Text("Refreshing...")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Image(systemName: "clock")
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(.secondary)
+                                    Text("Updated \(lastRefresh, format: .dateTime.hour().minute())")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
                                 }
-                                .padding(.horizontal)
-                                .padding(.top, 4)
+                                Spacer()
                             }
-                            
+                            .padding(.horizontal)
+                            .padding(.vertical, 6)
+                        }
+
+                        List {
                             ForEach(watchlistItems) { item in
                                 WatchlistRowView(item: item, deleteItem: { deleteItem(item) })
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
                             }
+                            .onMove(perform: moveItems)
                         }
-                        .padding(.horizontal)
-                        .padding(.top, 8)
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
                     }
                 }
             }
             .navigationTitle("Watchlist")
             .toolbar {
-                // // Refresh button
-                // ToolbarItem(placement: .automatic) {
-                //     Button(action: { Task { await refreshQuotes() } }) {
-                //         Image(systemName: "arrow.clockwise")
-                //             .rotationEffect(.degrees(isRefreshing ? 360 : 0))
-                //             .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
-                //     }
-                //     .labelStyle(.titleAndIcon)
-                //     .help("Refresh Prices")
-                //     .disabled(isRefreshing)
-                // }
-                
-                // Add button
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddItem = true }) {
                         Label("Add Symbol", systemImage: "plus")
@@ -100,16 +97,13 @@ struct WatchlistView: View {
             .sheet(isPresented: $showAddItem) {
                 AddWatchlistItemView()
                     .onDisappear {
-                        // Refresh quotes after adding a new item
                         Task { await refreshQuotes() }
                     }
             }
             .task {
-                // Fetch quotes when view first appears
                 await refreshQuotes()
             }
             .onReceive(refreshTimer) { _ in
-                // Auto-refresh only during active hours (including pre/post market)
                 let status = MarketService.shared.currentStatus()
                 if status == .open || status == .preMarket || status == .postMarket {
                     Task { await refreshQuotes() }
@@ -117,24 +111,23 @@ struct WatchlistView: View {
             }
         }
     }
-    
+
     // MARK: - Data Fetching
-    
+
     private func refreshQuotes() async {
         guard !watchlistItems.isEmpty else { return }
-        
+
         isRefreshing = true
-        
+
         let symbols = watchlistItems.map { $0.ticker }
         let quotes = await StockQuoteService.shared.fetchQuotes(for: symbols)
-        
-        // Apply quotes to watchlist items
+
         for item in watchlistItems {
             if let quote = quotes[item.ticker.uppercased()] {
                 item.updateQuote(quote)
             }
         }
-        
+
         lastRefreshTime = Date()
         isRefreshing = false
     }

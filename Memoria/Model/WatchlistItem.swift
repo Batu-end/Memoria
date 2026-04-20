@@ -13,6 +13,7 @@ final class WatchlistItem {
     var id: UUID
     var ticker: String
     var dateAdded: Date
+    var sortOrder: Int = 0
     var notes: String?
     var priceAtAdd: Double?       // Reference price when first added
     
