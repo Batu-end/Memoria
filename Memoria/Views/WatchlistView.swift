@@ -3,7 +3,6 @@
 //  Memoria
 //
 //  Created by Batu Demirtas on 1/29/26.
-//  Updated with live price refresh.
 
 import SwiftUI
 import SwiftData
@@ -45,47 +44,37 @@ struct WatchlistView: View {
                         description: Text("Add a stock to start tracking live prices.")
                     )
                 } else {
-                    VStack(spacing: 0) {
-                        // Refresh status bar
-                        if let lastRefresh = lastRefreshTime {
-                            HStack {
-                                if isRefreshing {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                        .frame(width: 12, height: 12)
-                                    Text("Refreshing...")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Image(systemName: "clock")
-                                        .font(.system(size: 9))
-                                        .foregroundStyle(.secondary)
-                                    Text("Updated \(lastRefresh, format: .dateTime.hour().minute())")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 6)
+                    List {
+                        ForEach(watchlistItems) { item in
+                            WatchlistRowView(item: item, deleteItem: { deleteItem(item) })
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
                         }
-
-                        List {
-                            ForEach(watchlistItems) { item in
-                                WatchlistRowView(item: item, deleteItem: { deleteItem(item) })
-                                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                                    .listRowSeparator(.hidden)
-                                    .listRowBackground(Color.clear)
-                            }
-                            .onMove(perform: moveItems)
-                        }
-                        .listStyle(.plain)
-                        .scrollContentBackground(.hidden)
+                        .onMove(perform: moveItems)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
             .navigationTitle("Watchlist")
             .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    if let lastRefresh = lastRefreshTime {
+                        Button(action: {}) {
+                            HStack(spacing: 4) {
+                                if isRefreshing {
+                                    ProgressView().scaleEffect(0.6).frame(width: 10, height: 10)
+                                }
+                                Text(isRefreshing ? "Refreshing…" : "Updated \(lastRefresh, format: .dateTime.hour().minute())")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, 6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddItem = true }) {
                         Label("Add Symbol", systemImage: "plus")
