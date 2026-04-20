@@ -35,12 +35,28 @@ struct CloseTradeSheet: View {
         exitPrice != nil && (exitPrice ?? 0) > 0
     }
     
+    /// Instant calculation from executions to ensure UI responsiveness
+    private var realTimeEffectiveQuantity: Double {
+        let opening = trade.executions.filter { $0.type == (trade.side == .long ? .buy : .sell) }.reduce(0) { $0 + $1.quantity }
+        let closing = trade.executions.filter { $0.type == (trade.side == .long ? .sell : .buy) }.reduce(0) { $0 + $1.quantity }
+        return opening - closing
+    }
+    
     /// Preview P&L before confirming
     private var previewPnl: Double? {
-        guard let exit = exitPrice, let entry = trade.entryPrice else { return nil }
-        let qty = trade.quantity ?? 1.0
+        guard let exit = exitPrice else { return nil }
+        
+        // Calculate dynamic VWAP from executions for accuracy
+        let openingExecs = trade.side == .long ? 
+            trade.executions.filter { $0.type == .buy } : 
+            trade.executions.filter { $0.type == .sell }
+        
+        let totalOpeningQty = openingExecs.reduce(0) { $0 + $1.quantity }
+        let totalOpeningBasis = openingExecs.reduce(0) { $0 + ($1.price * $1.quantity) }
+        let vwap = totalOpeningQty > 0 ? totalOpeningBasis / totalOpeningQty : (trade.entryPrice ?? 0)
+        
         let direction: Double = (trade.side == .short) ? -1.0 : 1.0
-        return (exit - entry) * qty * direction
+        return (exit - vwap) * realTimeEffectiveQuantity * direction
     }
     
     var body: some View {
@@ -127,7 +143,7 @@ struct CloseTradeSheet: View {
         trade.dateClosed = dateClosed
         trade.status = .closed
         
-        AnalyticsService.shared.log(.tradeClosed, details: "Ticker: \(trade.ticker), P&L: \(trade.pnl ?? 0)", context: modelContext)
+        AnalyticsService.shared.log(.tradeClosed, details: "Ticker: \(trade.ticker), P&L: \(trade.math?.totalPnl ?? 0)", context: modelContext)
         
         dismiss()
     }

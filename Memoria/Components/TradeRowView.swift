@@ -8,11 +8,14 @@
 import SwiftUI
 
 struct TradeRowView: View {
+    var engine = AccountingEngine.shared
     let trade: Trade
-    var accountingEngine = AccountingEngine.shared
     
+    init(trade: Trade) {
+        self.trade = trade
+    }
     var math: TradeAccounting? {
-        accountingEngine.tradeAccounting[trade.id]
+        engine.tradeAccounting[trade.id]
     }
     
     private var strokeColor: Color {

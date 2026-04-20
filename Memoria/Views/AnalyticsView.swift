@@ -8,7 +8,7 @@ struct StrategyStat: Identifiable {
     let trades: [Trade]
     
     var totalPnl: Double {
-        trades.compactMap { $0.pnl }.reduce(0, +)
+        trades.compactMap { $0.math?.totalPnl }.reduce(0, +)
     }
     
     var winRate: Double {
@@ -18,14 +18,19 @@ struct StrategyStat: Identifiable {
     }
     
     var profitFactor: Double {
-        let grossWin = trades.compactMap { $0.pnl }.filter { $0 > 0 }.reduce(0, +)
-        let grossLoss = abs(trades.compactMap { $0.pnl }.filter { $0 < 0 }.reduce(0, +))
+        let pnls = trades.compactMap { $0.math?.totalPnl }
+        let grossWin = pnls.filter { $0 > 0 }.reduce(0, +)
+        let grossLoss = abs(pnls.filter { $0 < 0 }.reduce(0, +))
         guard grossLoss > 0 else { return grossWin > 0 ? .infinity : 0 }
         return grossWin / grossLoss
     }
 }
 
 struct AnalyticsView: View {
+    var engine = AccountingEngine.shared
+    
+    init() {}
+    
     // Note: To bypass SwiftData Predicate limits, we bring in all closed trades and filter down.
     @Query(filter: #Predicate<Trade> { $0.statusRaw == "Closed" }) private var closedTrades: [Trade]
     

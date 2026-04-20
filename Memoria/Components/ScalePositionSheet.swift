@@ -24,7 +24,7 @@ struct ScalePositionSheet: View {
         self.livePrice = livePrice
         
         // Initial defaults
-        let initialPrice = livePrice ?? trade.vwap ?? 0
+        let initialPrice = livePrice ?? trade.math?.vwap ?? 0
         _priceString = State(initialValue: initialPrice > 0 ? String(format: "%.2f", initialPrice) : "")
         _quantityString = State(initialValue: "")
         _amountString = State(initialValue: "")
@@ -33,12 +33,19 @@ struct ScalePositionSheet: View {
     private var price: Double? { Double(priceString) }
     private var quantity: Double? { Double(quantityString) }
     
+    /// Instant calculation from executions to ensure UI responsiveness
+    private var realTimeEffectiveQuantity: Double {
+        let opening = trade.executions.filter { $0.type == (trade.side == .long ? .buy : .sell) }.reduce(0) { $0 + $1.quantity }
+        let closing = trade.executions.filter { $0.type == (trade.side == .long ? .sell : .buy) }.reduce(0) { $0 + $1.quantity }
+        return opening - closing
+    }
+    
     private var isValid: Bool {
         guard let p = price, let q = quantity, p > 0, q > 0 else { return false }
         
         // If trimming, can't trim more than we have
         if type == .sell {
-            return q <= trade.effectiveQuantity
+            return q <= realTimeEffectiveQuantity
         }
         
         return true
@@ -103,7 +110,7 @@ struct ScalePositionSheet: View {
                         
                         if type == .sell {
                             Button("Max") {
-                                let maxVal = trade.effectiveQuantity * (price ?? 0)
+                                let maxVal = realTimeEffectiveQuantity * (price ?? 0)
                                 amountString = String(format: "%.2f", maxVal)
                                 syncFromAmount(amountString)
                             }
@@ -132,7 +139,7 @@ struct ScalePositionSheet: View {
                 } header: {
                     Text("Execution Details")
                 } footer: {
-                    if type == .sell, let q = quantity, q == trade.effectiveQuantity {
+                    if type == .sell, let q = quantity, q == realTimeEffectiveQuantity {
                         Text("Note: Selling your entire remaining position will automatically close this trade.")
                             .foregroundStyle(.orange)
                     }
@@ -212,7 +219,7 @@ struct ScalePositionSheet: View {
         trade.executions.append(execution)
         
         // Auto-close logic
-        if trade.effectiveQuantity == 0 {
+        if realTimeEffectiveQuantity == 0 {
             trade.status = .closed
             trade.dateClosed = date
             trade.exitPrice = p // Use last sell price as master exit price
