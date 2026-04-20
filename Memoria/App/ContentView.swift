@@ -25,7 +25,7 @@ struct ContentView: View {
                 .tabItem {
                     Label("Trades", systemImage: "chart.bar.doc.horizontal")
                 }
-            
+
             WatchlistView()
                 .tabItem {
                     Label("Watchlist", systemImage: "list.bullet")

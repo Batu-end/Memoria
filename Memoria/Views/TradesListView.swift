@@ -41,11 +41,7 @@ struct TradesListView: View {
             ZStack {
                 // Background
                 // Background
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.11), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
                 
                 ScrollView {
@@ -119,63 +115,37 @@ struct TradesListView: View {
     }
     
     private var statsHeader: some View {
-        VStack(spacing: 12) {
-            // Top row: Total P&L
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Total P&L")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(accountingEngine.portfolioState.totalPnl >= 0 ? "+\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")" : "\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Win Rate")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(accountingEngine.portfolioState.winRate, specifier: "%.0f")%")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(accountingEngine.portfolioState.winRate >= 50 ? Color.green : Color.orange)
-                }
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("REALIZED P&L")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .tracking(1.5)
+                Text(accountingEngine.portfolioState.totalPnl >= 0 ? "+\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")" : "\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
             }
-            
-            Divider().background(Color.white.opacity(0.1))
-            
-            // Bottom row: W/L record + Avg Win/Loss
-            HStack(spacing: 20) {
-                StatPill(label: "W", value: "\(accountingEngine.portfolioState.winCount)", color: .green)
-                StatPill(label: "L", value: "\(accountingEngine.portfolioState.lossCount)", color: .red)
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text("Avg Win")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    Text("+\(accountingEngine.portfolioState.avgWin, specifier: "%.2f")")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.green)
-                }
-                
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text("Avg Loss")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    Text("\(accountingEngine.portfolioState.avgLoss, specifier: "%.2f")")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.red)
-                }
+
+            Spacer()
+
+            StatPill(label: "W", value: "\(accountingEngine.portfolioState.winCount)", color: .green)
+            StatPill(label: "L", value: "\(accountingEngine.portfolioState.lossCount)", color: .red)
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("WIN RATE")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .tracking(1.5)
+                Text("\(accountingEngine.portfolioState.winRate, specifier: "%.0f")%")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(accountingEngine.portfolioState.winRate >= 50 ? Color.green : Color.orange)
             }
         }
-        .padding(16)
-        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
         .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.08), lineWidth: 1))
         .padding(.horizontal)
     }
     

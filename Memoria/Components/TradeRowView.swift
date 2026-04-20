@@ -108,26 +108,40 @@ struct TradeRowView: View {
                     .clipShape(Capsule())
             }
             
-            // Right: P&L or Status
+            // Right: P&L or live unrealized
             VStack(alignment: .trailing, spacing: 4) {
                 if trade.status == .closed, let pnl = math?.totalPnl {
                     Text(pnl >= 0 ? "+\(pnl, specifier: "%.2f")" : "\(pnl, specifier: "%.2f")")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(pnl >= 0 ? Color.green : Color.red)
-                    
+
                     if let pct = math?.percentReturn {
                         Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.1f")%")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle((pct >= 0 ? Color.green : Color.red).opacity(0.8))
                     }
                 } else {
-                    Text("OPEN")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.blue)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.blue.opacity(0.15))
-                        .clipShape(Capsule())
+                    let unrealized = math?.unrealizedPnl ?? 0
+                    if unrealized != 0 {
+                        Text(unrealized >= 0 ? "+\(unrealized, specifier: "%.2f")" : "\(unrealized, specifier: "%.2f")")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(unrealized >= 0 ? Color.green : Color.red)
+
+                        if let vwap = math?.vwap, let sl = trade.stopLoss, vwap > 0 {
+                            let dist = ((sl - vwap) / vwap) * 100 * (trade.side == .short ? -1 : 1)
+                            Text("SL \(dist >= 0 ? "+" : "")\(dist, specifier: "%.1f")%")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(dist < -5 ? Color.red : Color.secondary)
+                        }
+                    } else {
+                        Text("OPEN")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.blue.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
                 }
             }
         }

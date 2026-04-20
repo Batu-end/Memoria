@@ -182,6 +182,56 @@ struct AddTradeView: View {
                     Label("Conviction", systemImage: "brain.head.profile")
                 }
                 
+                // ── Past Trade Dates ────────────────────
+                if viewModel.isPastTrade {
+                    Section {
+                        DatePicker("Open Date", selection: $viewModel.openDate, displayedComponents: .date)
+
+                        HStack(spacing: 16) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Exit Price")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 4) {
+                                    Text("$").foregroundStyle(.secondary)
+                                    TextField("0.00", text: $viewModel.exitPriceString)
+                                        .font(.system(.title3, design: .monospaced))
+                                }
+                            }
+
+                            Divider().frame(height: 40)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Close Date")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                DatePicker("", selection: $viewModel.closeDate, displayedComponents: .date)
+                                    .labelsHidden()
+                            }
+                        }
+
+                        if let entry = Double(viewModel.priceString),
+                           let exit = Double(viewModel.exitPriceString),
+                           let capital = Double(viewModel.capitalString),
+                           entry > 0, capital > 0 {
+                            let qty = capital / entry
+                            let direction: Double = viewModel.side == .long ? 1 : -1
+                            let pnl = (exit - entry) * qty * direction
+                            HStack {
+                                Text("Realized P&L")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(pnl >= 0 ? "+\(pnl, specifier: "%.2f")" : "\(pnl, specifier: "%.2f")")
+                                    .font(.system(.body, design: .rounded))
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(pnl >= 0 ? .green : .red)
+                            }
+                        }
+                    } header: {
+                        Label("Trade History", systemImage: "clock.arrow.circlepath")
+                    }
+                }
+
                 // ── Notes ───────────────────────────────
                 Section {
                     TextEditor(text: $viewModel.notes)
@@ -195,13 +245,27 @@ struct AddTradeView: View {
             .background(
                 Color(nsColor: .windowBackgroundColor)
             )
-            .navigationTitle("New Trade")
+            .navigationTitle(viewModel.isPastTrade ? "Log Past Trade" : "New Trade")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.isPastTrade.toggle()
+                        }
+                    } label: {
+                        Label(
+                            viewModel.isPastTrade ? "Live Trade" : "Log Past Trade",
+                            systemImage: viewModel.isPastTrade ? "bolt.fill" : "clock.arrow.circlepath"
+                        )
+                        .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(viewModel.isPastTrade ? .orange : .secondary)
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Open Trade") {
+                    Button(viewModel.isPastTrade ? "Log Trade" : "Open Trade") {
                         viewModel.addTrade(context: modelContext)
                         dismiss()
                     }

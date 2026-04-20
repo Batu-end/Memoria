@@ -4,6 +4,9 @@ struct EquityDataPoint: Identifiable {
     let id = UUID()
     let date: Date
     let balance: Double
+    var isTrade: Bool = false
+    var isWin: Bool? = nil
+    var ticker: String? = nil
 }
 
 /// A lightweight container for individual trade accounting stats.
