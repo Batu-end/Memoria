@@ -11,12 +11,15 @@ import Combine
 
 struct TradeDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    var engine = AccountingEngine.shared
     @Bindable var trade: Trade
     
-    var accountingEngine = AccountingEngine.shared
+    init(trade: Trade) {
+        self.trade = trade
+    }
     
     var math: TradeAccounting? {
-        accountingEngine.tradeAccounting[trade.id]
+        engine.tradeAccounting[trade.id]
     }
     
     @State private var showManageSheet = false

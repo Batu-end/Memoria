@@ -97,6 +97,9 @@ class AccountingEngine {
             for trade in capturedTrades {
                 if Task.isCancelled { return }
                 
+                // Initialize trade-specific math container
+                var math = TradeAccounting(tradeId: trade.id)
+                
                 // 1. Determine Basis (VWAP) based on Side
                 let openingExecs = trade.side == .long ? 
                     trade.executions.filter { $0.type == .buy } : 
@@ -107,11 +110,11 @@ class AccountingEngine {
                     trade.executions.filter { $0.type == .buy }
                 
                 let totalOpeningQty = openingExecs.reduce(0) { $0 + $1.quantity }
-                let totalOpeningBasis = openingExecs.reduce(0) { $0 + ($1.price * $1.quantity) }
+                let totalCostBasis = openingExecs.reduce(0) { $0 + ($1.price * $1.quantity) }
                 
                 let totalClosingQty = closingExecs.reduce(0) { $0 + $1.quantity }
                 
-                math.vwap = totalOpeningQty > 0 ? totalOpeningBasis / totalOpeningQty : trade.entryPrice
+                math.vwap = totalOpeningQty > 0 ? totalCostBasis / totalOpeningQty : trade.entryPrice
                 math.effectiveQuantity = totalOpeningQty - totalClosingQty
                 
                 let currentVwap = math.vwap ?? 0

@@ -171,8 +171,8 @@ struct SettingsView: View {
         var sum: Double = 0
         let openTrades = trades.filter { $0.status == .open }
         for trade in openTrades {
-            if let entry = trade.entryPrice, let qty = trade.quantity, let quote = liveQuotes[trade.ticker.uppercased()] {
-                let pnl = (quote.currentPrice - entry) * qty * (trade.side == .long ? 1.0 : -1.0)
+            if let entry = trade.entryPrice, let math = trade.math, let quote = liveQuotes[trade.ticker.uppercased()] {
+                let pnl = (quote.currentPrice - entry) * math.effectiveQuantity * (trade.side == .long ? 1.0 : -1.0)
                 sum += pnl
             }
         }
@@ -180,7 +180,9 @@ struct SettingsView: View {
     }
     
     private var currentBalance: Double {
-        let totalPnl = trades.filter { $0.status == .closed }.compactMap { $0.pnl }.reduce(0, +)
+        let totalPnl = trades.filter { $0.status == .closed }.compactMap { trade -> Double? in
+            trade.math?.totalPnl
+        }.reduce(0, +)
         return startingBalance + totalPnl + totalFloatingPnl
     }
     
