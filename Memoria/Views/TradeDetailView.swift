@@ -210,7 +210,7 @@ struct TradeDetailView: View {
                         }
                     } label: {
                         HStack {
-                            Image(systemName: trade.rulesFollowed.contains(rule) ? "checkmark.circle.fill" : "circle")
+                            Image(systemName: trade.rulesFollowed.contains(rule) ? "checkmark.square.fill" : "square")
                                 .foregroundStyle(trade.rulesFollowed.contains(rule) ? .green : .secondary)
                             Text(rule)
                                 .font(.system(size: 13))
