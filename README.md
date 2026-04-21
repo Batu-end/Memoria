@@ -19,6 +19,8 @@ Built with **SwiftUI** and **SwiftData**, it’s a high-density, local-first env
   <img src=".github/assets/Watchlist.png" width="90%" />
 </p>
 
+🌐 **[memoria-app.com](https://batu-end.github.io/memoria-site/)**
+
 ---
 
 ## The Philosophy: Beyond the Ledger
