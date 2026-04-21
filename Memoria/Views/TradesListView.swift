@@ -12,71 +12,42 @@ struct TradesListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Trade.dateAdded, order: .reverse) private var allTrades: [Trade]
     
+    var accountingEngine = AccountingEngine.shared
+    
     @State private var selectedFilter: String = "All"
+    @State private var selectedTypeFilter: String = "All"
     @State private var showAddTrade = false
     @State private var tradeToClose: Trade?
-    
+    @State private var tradeToScale: Trade?
+
     private let filters = ["All", "Open", "Closed"]
-    
+    private let typeFilters = ["All", "Stock", "ETF"]
+
     private var filteredTrades: [Trade] {
+        var trades: [Trade]
         switch selectedFilter {
-        case "Open":
-            return allTrades.filter { $0.status == .open }
-        case "Closed":
-            return allTrades.filter { $0.status == .closed }
-        default:
-            return Array(allTrades)
+        case "Open":   trades = allTrades.filter { $0.status == .open }
+        case "Closed": trades = allTrades.filter { $0.status == .closed }
+        default:       trades = Array(allTrades)
+        }
+        switch selectedTypeFilter {
+        case "Stock": return trades.filter { $0.assetType == .stock }
+        case "ETF":   return trades.filter { $0.assetType == .etf }
+        default:      return trades
         }
     }
     
-    // MARK: - Stats for Closed Trades (op.gg-style header)
-    
+    // Stats are now pulled directly from the AccountingEngine
     private var closedTrades: [Trade] {
         allTrades.filter { $0.status == .closed }
-    }
-    
-    private var totalPnl: Double {
-        closedTrades.compactMap { $0.pnl }.reduce(0, +)
-    }
-    
-    private var winCount: Int {
-        closedTrades.filter { $0.isWin }.count
-    }
-    
-    private var lossCount: Int {
-        closedTrades.filter { !$0.isWin && $0.pnl != nil }.count
-    }
-    
-    private var winRate: Double {
-        let total = winCount + lossCount
-        guard total > 0 else { return 0 }
-        return Double(winCount) / Double(total) * 100
-    }
-    
-    private var avgWin: Double {
-        let wins = closedTrades.compactMap { $0.pnl }.filter { $0 > 0 }
-        guard !wins.isEmpty else { return 0 }
-        return wins.reduce(0, +) / Double(wins.count)
-    }
-    
-    private var avgLoss: Double {
-        let losses = closedTrades.compactMap { $0.pnl }.filter { $0 < 0 }
-        guard !losses.isEmpty else { return 0 }
-        return losses.reduce(0, +) / Double(losses.count)
     }
     
     var body: some View {
         NavigationStack {
             ZStack {
                 // Background
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.12, green: 0.12, blue: 0.13),
-                        Color(red: 0.07, green: 0.07, blue: 0.08)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                // Background
+                LinearGradient(colors: [Color(red: 0.05, green: 0.05, blue: 0.06), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
                 
                 ScrollView {
@@ -101,27 +72,22 @@ struct TradesListView: View {
             }
             .navigationTitle("Trades")
             .toolbar {
-                ToolbarItem(placement: .automatic) {
+                ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddTrade = true }) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(8)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-                            )
+                        Label("New Trade", systemImage: "plus")
                     }
-                    .buttonStyle(.plain)
+                    .labelStyle(.titleAndIcon)
+                    .help("Add Trade")
                 }
             }
             .sheet(isPresented: $showAddTrade) {
                 AddTradeView()
             }
             .sheet(item: $tradeToClose) { trade in
-                CloseTradeSheet(trade: trade)
+                CloseTradeSheet(trade: trade, marketPrice: accountingEngine.currentPrice(for: trade.ticker))
+            }
+            .sheet(item: $tradeToScale) { trade in
+                ScalePositionSheet(trade: trade, livePrice: accountingEngine.currentPrice(for: trade.ticker))
             }
         }
     }
@@ -129,92 +95,56 @@ struct TradesListView: View {
     // MARK: - Sub-views
     
     private var filterBar: some View {
-        HStack(spacing: 0) {
-            ForEach(filters, id: \.self) { filter in
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedFilter = filter
-                    }
-                }) {
-                    Text(filter)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(selectedFilter == filter ? .white : .secondary)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(
-                            selectedFilter == filter
-                                ? AnyShapeStyle(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing))
-                                : AnyShapeStyle(Color.clear)
-                        )
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
+        HStack(spacing: 12) {
+            Picker("Status", selection: $selectedFilter) {
+                ForEach(filters, id: \.self) { Text($0).tag($0) }
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 200)
+
+            Picker("Type", selection: $selectedTypeFilter) {
+                ForEach(typeFilters, id: \.self) { Text($0).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 160)
         }
-        .padding(4)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
         .padding(.horizontal)
     }
     
     private var statsHeader: some View {
-        VStack(spacing: 12) {
-            // Top row: Total P&L
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Total P&L")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(totalPnl >= 0 ? "+\(totalPnl, specifier: "%.2f")" : "\(totalPnl, specifier: "%.2f")")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(totalPnl >= 0 ? Color.green : Color.red)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Win Rate")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(winRate, specifier: "%.0f")%")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(winRate >= 50 ? Color.green : Color.orange)
-                }
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("REALIZED P&L")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .tracking(1.5)
+                Text(accountingEngine.portfolioState.totalPnl >= 0 ? "+\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")" : "\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
             }
-            
-            Divider().background(Color.white.opacity(0.1))
-            
-            // Bottom row: W/L record + Avg Win/Loss
-            HStack(spacing: 20) {
-                StatPill(label: "W", value: "\(winCount)", color: .green)
-                StatPill(label: "L", value: "\(lossCount)", color: .red)
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text("Avg Win")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    Text("+\(avgWin, specifier: "%.2f")")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.green)
-                }
-                
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text("Avg Loss")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    Text("\(avgLoss, specifier: "%.2f")")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.red)
-                }
+
+            Spacer()
+
+            StatPill(label: "W", value: "\(accountingEngine.portfolioState.winCount)", color: .green)
+            StatPill(label: "L", value: "\(accountingEngine.portfolioState.lossCount)", color: .red)
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("WIN RATE")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .tracking(1.5)
+                Text("\(accountingEngine.portfolioState.winRate, specifier: "%.0f")%")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(accountingEngine.portfolioState.winRate >= 50 ? Color.green : Color.orange)
             }
         }
-        .padding(16)
-        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
         .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.08), lineWidth: 1))
         .padding(.horizontal)
     }
     
@@ -230,7 +160,12 @@ struct TradesListView: View {
                         Button {
                             tradeToClose = trade
                         } label: {
-                            Label("Close Trade", systemImage: "checkmark.circle")
+                            Label("Close Position", systemImage: "checkmark.circle.fill")
+                        }
+                        Button {
+                            tradeToScale = trade
+                        } label: {
+                            Label("Scale Position", systemImage: "slider.horizontal.3")
                         }
                     }
                     
