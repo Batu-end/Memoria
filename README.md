@@ -1,4 +1,5 @@
-# Memoria 🧘‍♂️
+# Memoria 🧘‍♂️ 🌐 **[memoria-app.com](https://batu-end.github.io/memoria-site/)**
+
 ### TradingView is where you analyze the market. The Broker is where you manage the trade. Memoria is where you analyze yourself.
 
 ![Memoria Dashboard](.github/assets/Dashboard.png)
@@ -19,7 +20,6 @@ Built with **SwiftUI** and **SwiftData**, it’s a high-density, local-first env
   <img src=".github/assets/Watchlist.png" width="90%" />
 </p>
 
-🌐 **[memoria-app.com](https://batu-end.github.io/memoria-site/)**
 
 ---
 
