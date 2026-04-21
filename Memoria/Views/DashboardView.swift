@@ -22,6 +22,7 @@ struct DashboardView: View {
     @AppStorage("traderName") private var traderName: String = ""
     @AppStorage("traderPersonality") private var personalityRaw: String = TraderPersonality.human.rawValue
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
+    @AppStorage("unreadableDate") private var unreadableDate: Bool = false
     
     // Live Data Source
     @Query(sort: \Trade.dateAdded, order: .reverse) private var trades: [Trade]
@@ -95,16 +96,16 @@ struct DashboardView: View {
     // MARK: - Hero Section (Net Liq)
     
     private var balanceHeroSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
+            Spacer()
             Text("NET LIQUIDATING VALUE")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.secondary)
                 .tracking(2)
-            
+
             Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
-                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .font(.system(size: 64, weight: .bold, design: .monospaced))
                 .contentTransition(.numericText())
-                .padding(.bottom, 4)
                 
             // Market Status Indicator
             HStack(spacing: 6) {
@@ -125,10 +126,9 @@ struct DashboardView: View {
             .overlay(
                 Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1)
             )
+            Spacer()
         }
-        .padding(.top, 20)
-        .padding(.bottom, 10)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 160)
         .opacity(isDashboardReady ? 1 : 0)
     }
     
@@ -686,8 +686,8 @@ struct DashboardView: View {
                     .tracking(3)
 
                 Text("\(month) \(dayOrdinal)")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.14))
+                    .font(unreadableDate ? .custom("Zapfino", size: 26) : .system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.18))
 
                 Text(year)
                     .font(.system(size: 10, weight: .regular, design: .monospaced))
