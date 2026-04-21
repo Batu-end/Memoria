@@ -18,6 +18,7 @@ struct TradesListView: View {
     @State private var selectedTypeFilter: String = "All"
     @State private var showAddTrade = false
     @State private var tradeToClose: Trade?
+    @State private var tradeToScale: Trade?
 
     private let filters = ["All", "Open", "Closed"]
     private let typeFilters = ["All", "Stock", "ETF"]
@@ -83,7 +84,10 @@ struct TradesListView: View {
                 AddTradeView()
             }
             .sheet(item: $tradeToClose) { trade in
-                CloseTradeSheet(trade: trade)
+                CloseTradeSheet(trade: trade, marketPrice: accountingEngine.currentPrice(for: trade.ticker))
+            }
+            .sheet(item: $tradeToScale) { trade in
+                ScalePositionSheet(trade: trade, livePrice: accountingEngine.currentPrice(for: trade.ticker))
             }
         }
     }
@@ -156,7 +160,12 @@ struct TradesListView: View {
                         Button {
                             tradeToClose = trade
                         } label: {
-                            Label("Close Trade", systemImage: "checkmark.circle")
+                            Label("Close Position", systemImage: "checkmark.circle.fill")
+                        }
+                        Button {
+                            tradeToScale = trade
+                        } label: {
+                            Label("Scale Position", systemImage: "slider.horizontal.3")
                         }
                     }
                     

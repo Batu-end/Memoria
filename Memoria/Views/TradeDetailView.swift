@@ -68,9 +68,9 @@ struct TradeDetailView: View {
             ToolbarItemGroup(placement: .primaryAction) {
                 if trade.status == .open {
                     Button(action: { showManageSheet = true }) {
-                        Label("Manage", systemImage: "slider.horizontal.3")
+                        Label("Manage Position", systemImage: "slider.horizontal.3")
                     }
-                    .help("Scale In/Out or Add Executions")
+                    .labelStyle(.titleAndIcon)
                 }
             }
         }
