@@ -318,6 +318,7 @@ struct CapitalAdjustmentSheet: View {
             }
         }
         .frame(width: 400, height: 450)
+        .onMouseBackButton()
     }
 }
 

@@ -541,6 +541,7 @@ struct FullScreenImageView: View {
             }
         }
         .frame(minWidth: 940, minHeight: 640)
+        .onMouseBackButton()
     }
 }
 

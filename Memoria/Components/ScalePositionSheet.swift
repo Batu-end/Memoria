@@ -184,6 +184,7 @@ struct ScalePositionSheet: View {
             .disabled(!isValid)
         }
         .frame(width: 320, height: 500)
+        .onMouseBackButton()
         .background(.ultraThinMaterial)
     }
     
