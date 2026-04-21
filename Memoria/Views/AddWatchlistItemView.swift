@@ -68,6 +68,7 @@ struct AddWatchlistItemView: View {
             }
         }
         .frame(minWidth: 360, minHeight: 180)
+        .onMouseBackButton()
         .onAppear {
             ticker = ""
             isLookingUp = false

@@ -275,6 +275,7 @@ struct AddTradeView: View {
             }
         }
         .frame(minWidth: 440, minHeight: 520)
+        .onMouseBackButton()
     }
 }
 
