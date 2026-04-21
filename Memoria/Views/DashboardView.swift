@@ -104,7 +104,7 @@ struct DashboardView: View {
                 .tracking(2)
 
             Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
-                .font(.system(size: 64, weight: .bold, design: .monospaced))
+                .font(.custom("Bodoni 72", size: 80))
                 .contentTransition(.numericText())
                 
             // Market Status Indicator
@@ -129,9 +129,10 @@ struct DashboardView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, minHeight: 160)
+        .padding(.bottom, 16)
         .opacity(isDashboardReady ? 1 : 0)
     }
-    
+
     // MARK: - Active Portfolio Hub
 
     private var activePortfolioSection: some View {
