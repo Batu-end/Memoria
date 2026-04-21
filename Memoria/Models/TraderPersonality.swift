@@ -25,12 +25,12 @@ enum TraderPersonality: String, CaseIterable {
 
     var nameFont: Font {
         switch self {
-        case .human:    return .system(size: 34, weight: .heavy,  design: .rounded)
-        case .guru:     return .system(size: 34, weight: .bold,   design: .serif)
-        case .vampire:  return .system(size: 34, weight: .bold,   design: .serif)
-        case .pirate:   return .system(size: 34, weight: .black,  design: .serif)
-        case .degen:    return .system(size: 34, weight: .heavy,  design: .monospaced)
-        case .nightOwl: return .system(size: 34, weight: .light,  design: .serif)
+        case .human:    return .system(size: 44, weight: .heavy,  design: .rounded)
+        case .guru:     return .system(size: 44, weight: .bold,   design: .serif)
+        case .vampire:  return .system(size: 44, weight: .bold,   design: .serif)
+        case .pirate:   return .system(size: 44, weight: .black,  design: .serif)
+        case .degen:    return .system(size: 44, weight: .heavy,  design: .monospaced)
+        case .nightOwl: return .system(size: 44, weight: .light,  design: .serif)
         }
     }
 
