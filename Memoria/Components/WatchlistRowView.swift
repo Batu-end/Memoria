@@ -43,20 +43,37 @@ struct WatchlistRowView: View {
             // MARK: Sparkline
             Group {
                 if sparkline.count > 2 {
+                    let minVal = sparkline.min() ?? 0
+                    let maxVal = sparkline.max() ?? 1
                     Chart {
                         ForEach(Array(sparkline.enumerated()), id: \.offset) { i, val in
                             LineMark(
                                 x: .value("t", i),
                                 y: .value("p", val)
                             )
-                            .foregroundStyle(accentColor.opacity(0.7))
+                            .foregroundStyle(accentColor.opacity(0.8))
+                            .interpolationMethod(.catmullRom)
+
+                            AreaMark(
+                                x: .value("t", i),
+                                yStart: .value("min", minVal),
+                                yEnd: .value("p", val)
+                            )
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [accentColor.opacity(0.3), accentColor.opacity(0)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
                             .interpolationMethod(.catmullRom)
                         }
                     }
                     .chartXAxis(.hidden)
                     .chartYAxis(.hidden)
-                    .chartYScale(domain: .automatic(includesZero: false))
+                    .chartYScale(domain: minVal...maxVal)
                     .frame(height: 35)
+                    .clipped()
                 } else {
                     Rectangle()
                         .fill(Color.clear)
