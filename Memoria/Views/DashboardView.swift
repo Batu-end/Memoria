@@ -20,6 +20,8 @@ struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("startingBalance") private var startingBalance: Double = 1600.0
     @AppStorage("traderName") private var traderName: String = ""
+    @AppStorage("traderPersonality") private var personalityRaw: String = TraderPersonality.human.rawValue
+    private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
     
     // Live Data Source
     @Query(sort: \Trade.dateAdded, order: .reverse) private var trades: [Trade]
@@ -661,14 +663,18 @@ struct DashboardView: View {
         let month = Date().formatted(.dateTime.month(.wide))
         let year = Date().formatted(.dateTime.year())
         return HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("\(timeOfDayLabel),")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.cyan)
                     .tracking(3)
+                    .padding(.leading, 4)
 
                 Text(name)
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .font(personality.nameFont)
+                    .foregroundStyle(personality.nameColor)
+                    .italic(personality.isItalic)
+                    .padding(.leading, 2)
             }
 
             Spacer()
