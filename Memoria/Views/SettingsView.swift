@@ -16,6 +16,8 @@ struct SettingsView: View {
     
     @AppStorage("startingBalance") private var startingBalance: Double = 0.0
     @AppStorage("traderName") private var traderName: String = ""
+    @AppStorage("traderPersonality") private var personalityRaw: String = TraderPersonality.human.rawValue
+    private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
     
     @AppStorage("mathEngineInspector") private var mathEngineInspectorEnabled: Bool = false
 
@@ -40,6 +42,21 @@ struct SettingsView: View {
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.plain)
                             .foregroundStyle(.blue)
+                    }
+
+                    HStack {
+                        Label("I am a...", systemImage: "theatermasks.fill")
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { personality },
+                            set: { personalityRaw = $0.rawValue }
+                        )) {
+                            ForEach(TraderPersonality.allCases, id: \.self) { p in
+                                Text("\(p.emoji) \(p.rawValue)").tag(p)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
                     }
                 } header: {
                     Text("Profile")
