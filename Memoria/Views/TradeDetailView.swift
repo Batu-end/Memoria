@@ -20,8 +20,7 @@ struct TradeDetailView: View {
     @AppStorage("mathEngineInspector") private var mathEngineInspectorEnabled: Bool = false
 
     @State private var showManageSheet = false
-    @State private var showDeleteAlert = false
-    @State private var showEnlargeSheet = false
+@State private var showEnlargeSheet = false
     @State private var livePrice: Double?
 
     private let refreshTimer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
@@ -73,25 +72,10 @@ struct TradeDetailView: View {
                     }
                     .help("Scale In/Out or Add Executions")
                 }
-                Button(role: .destructive) { showDeleteAlert = true } label: {
-                    Label("Delete", systemImage: "trash").foregroundStyle(.red)
-                }
-                .help("Delete Trade")
             }
         }
         .sheet(isPresented: $showManageSheet) { ScalePositionSheet(trade: trade, livePrice: livePrice) }
         .sheet(isPresented: $showEnlargeSheet) { FullScreenImageView(attachmentId: trade.attachmentId) }
-        .alert("Delete Attachment?", isPresented: $showDeleteAlert) {
-            Button("Delete", role: .destructive) {
-                if let id = trade.attachmentId {
-                    LocalAttachmentService.shared.deleteImage(id: id)
-                    trade.attachmentId = nil
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will permanently remove the screenshot from this trade.")
-        }
     }
 
     // MARK: - Header
@@ -153,7 +137,7 @@ struct TradeDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("TRADE DETAILS")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.secondary)
 
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
                     GridRow {
@@ -220,7 +204,7 @@ struct TradeDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("RISK VS REWARD GAUGE")
-                    .font(.system(size: 11, weight: .bold)).foregroundStyle(.white.opacity(0.5))
+                    .font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
                 Spacer()
                 if let r = math?.rMultiple {
                     Text("\(r >= 0 ? "+" : "")\(r, specifier: "%.2f")R")
@@ -274,7 +258,7 @@ struct TradeDetailView: View {
 
     private var targetsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("TARGETS").font(.system(size: 11, weight: .bold)).foregroundStyle(.white.opacity(0.5))
+            Text("TARGETS").font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
             HStack(spacing: 20) {
                 if let sl = trade.stopLoss { DetailItem(label: "Stop Loss", value: String(format: "$%.2f", sl), color: .red) }
                 if let tp = trade.takeProfit { DetailItem(label: "Take Profit", value: String(format: "$%.2f", tp), color: .green) }
@@ -293,7 +277,7 @@ struct TradeDetailView: View {
     private var executionChecklistSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("EXECUTION CHECKLIST")
-                .font(.system(size: 11, weight: .bold)).foregroundStyle(.white.opacity(0.5))
+                .font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
 
             VStack(spacing: 2) {
                 ForEach(ruleOptions, id: \.self) { rule in
@@ -330,7 +314,7 @@ struct TradeDetailView: View {
 
     private var attachmentAndNotesSection: some View {
         VStack(spacing: 0) {
-            // Header — matches other section titles
+            // Section header — same style as all other cards
             HStack {
                 Text("TECHNICAL SETUP")
                     .font(.system(size: 11, weight: .bold))
@@ -386,7 +370,7 @@ struct TradeDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text("ANALYSIS & CONVICTION")
-                        .font(.system(size: 11, weight: .bold)).foregroundStyle(.white.opacity(0.5))
+                        .font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
                     Spacer()
                     StarRatingView(rating: Binding(
                         get: { trade.confidenceScore },
@@ -418,7 +402,7 @@ struct TradeDetailView: View {
     private var executionHistorySection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("EXECUTION HISTORY")
-                .font(.system(size: 11, weight: .bold)).foregroundStyle(.white.opacity(0.5))
+                .font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
 
             if trade.executions.isEmpty {
                 Text("No executions recorded.")
