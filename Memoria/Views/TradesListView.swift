@@ -86,31 +86,11 @@ struct TradesListView: View {
     // MARK: - Sub-views
     
     private var filterBar: some View {
-        HStack(spacing: 0) {
-            ForEach(filters, id: \.self) { filter in
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedFilter = filter
-                    }
-                }) {
-                    Text(filter)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(selectedFilter == filter ? .white : .secondary)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(
-                            selectedFilter == filter
-                                ? AnyShapeStyle(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing))
-                                : AnyShapeStyle(Color.clear)
-                        )
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
+        Picker("Filter", selection: $selectedFilter) {
+            ForEach(filters, id: \.self) { Text($0).tag($0) }
         }
-        .padding(4)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 240)
         .padding(.horizontal)
     }
     
