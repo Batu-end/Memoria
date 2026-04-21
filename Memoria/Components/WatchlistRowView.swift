@@ -13,6 +13,7 @@ struct WatchlistRowView: View {
     let deleteItem: () -> Void
 
     @State private var isHovered = false
+    @State private var isRowHovered = false
 
     private var isUp: Bool { (item.priceChangePercent ?? 0) >= 0 }
     private var accentColor: Color { isUp ? .green : .red }
@@ -136,7 +137,12 @@ struct WatchlistRowView: View {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
+                .fill(.white.opacity(isRowHovered ? 0.04 : 0))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
                 .stroke(.white.opacity(0.05), lineWidth: 0.5)
         )
+        .onHover { isRowHovered = $0 }
     }
 }
