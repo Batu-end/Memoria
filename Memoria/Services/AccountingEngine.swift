@@ -131,7 +131,8 @@ class AccountingEngine {
                 let totalClosingQty = closingExecs.reduce(0) { $0 + $1.quantity }
                 
                 math.vwap = totalOpeningQty > 0 ? totalCostBasis / totalOpeningQty : trade.entryPrice
-                math.effectiveQuantity = totalOpeningQty - totalClosingQty
+                // Fall back to trade.quantity when executions haven't loaded yet (SwiftData lazy-loads cascades)
+                math.effectiveQuantity = totalOpeningQty > 0 ? totalOpeningQty - totalClosingQty : (trade.quantity ?? 0)
                 
                 let currentVwap = math.vwap ?? 0
                 let direction: Double = (trade.side == .short) ? -1.0 : 1.0
