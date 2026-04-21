@@ -3,97 +3,146 @@
 //  Memoria
 //
 //  Created by Batu Demirtas on 1/29/26.
-//
 
 import SwiftUI
 import SwiftData
+import Combine
 
-// Visualization
 struct WatchlistView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \WatchlistItem.dateAdded, order: .reverse)
+    @Query(sort: [SortDescriptor(\WatchlistItem.sortOrder), SortDescriptor(\WatchlistItem.dateAdded, order: .reverse)])
     private var watchlistItems: [WatchlistItem]
-    
-    @State private var showAddTrade = false
-    // Change the function to accept the Item, not the ID
+
+    @State private var showAddItem = false
+    @State private var isRefreshing = false
+    @State private var lastRefreshTime: Date?
+    @State private var sparklines: [String: [Double]] = [:]
+
+    private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+
     private func deleteItem(_ item: WatchlistItem) {
         modelContext.delete(item)
     }
-    
+
+    private func moveItems(from source: IndexSet, to destination: Int) {
+        var reordered = watchlistItems
+        reordered.move(fromOffsets: source, toOffset: destination)
+        for (index, item) in reordered.enumerated() {
+            item.sortOrder = index
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                // Tahoe-style "Glass" Background (Subtle Dark)
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.12, green: 0.12, blue: 0.13), // Soft Charcoal
-                        Color(red: 0.07, green: 0.07, blue: 0.08)  // Deep Dark Gray
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                LinearGradient(colors: [Color(red: 0.05, green: 0.05, blue: 0.06), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
-                
-                // Live Data List
+
                 if watchlistItems.isEmpty {
                     ContentUnavailableView(
                         "No items in Watchlist",
                         systemImage: "eye.slash",
-                        description: Text("Add a stock manually to track it.")
+                        description: Text("Add a stock to start tracking live prices.")
                     )
                 } else {
                     List {
                         ForEach(watchlistItems) { item in
-                            WatchlistRowView(item: item, deleteItem: { deleteItem(item) })
-                                .listRowBackground(Color.clear)
+                            WatchlistRowView(item: item, sparkline: sparklines[item.ticker] ?? [], deleteItem: { deleteItem(item) })
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                                 .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
                         }
-                        .onDelete(perform: deleteItems)
-                        .listStyle(.plain)
-                        .contentMargins(.top, 60, for: .scrollContent) // Push content down
+                        .onMove(perform: moveItems)
                     }
+                    .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                } // Crucial for seeing the gradient behind the list
-            }
-            .navigationTitle("Watchlist")
-            // --- TOP BAR BUTTONS ---
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    // This is the "Add Icon" logic
-                    Button(action: { showAddTrade = true }) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold)) // Slightly smaller for toolbar
-                            .foregroundStyle(.white)
-                            .padding(8)
-                            .background(.ultraThinMaterial) // Glass background
-                            .clipShape(RoundedRectangle(cornerRadius: 8)) // Tahoe squaricle
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain) // Crucial for removing system oval
                 }
             }
-            // --- POPUP SHEET LOGIC ---
-            // This tells SwiftUI: "When 'showAddTrade' is true, popup the AddWatchlistItemView"
-            .sheet(isPresented: $showAddTrade) {
+            .navigationTitle("Watchlist")
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    if let lastRefresh = lastRefreshTime {
+                        Button(action: {}) {
+                            HStack(spacing: 4) {
+                                if isRefreshing {
+                                    ProgressView().scaleEffect(0.6).frame(width: 10, height: 10)
+                                }
+                                Text(isRefreshing ? "Refreshing…" : "Updated \(lastRefresh, format: .dateTime.hour().minute())")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, 6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { showAddItem = true }) {
+                        Label("Add Symbol", systemImage: "plus")
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .help("Add to Watchlist")
+                }
+            }
+            .sheet(isPresented: $showAddItem) {
                 AddWatchlistItemView()
-                    .presentationDetents([.medium]) // Makes it take up half the screen
+                    .onDisappear {
+                        Task { await refreshQuotes() }
+                    }
+            }
+            .task {
+                await refreshQuotes()
+            }
+            .onReceive(refreshTimer) { _ in
+                let status = MarketService.shared.currentStatus()
+                if status == .open || status == .preMarket || status == .postMarket {
+                    Task { await refreshQuotes() }
+                }
             }
         }
     }
-    
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(watchlistItems[index])
+
+    // MARK: - Data Fetching
+
+    private func refreshQuotes() async {
+        guard !watchlistItems.isEmpty else { return }
+
+        isRefreshing = true
+
+        let symbols = watchlistItems.map { $0.ticker }
+
+        async let quotesTask = StockQuoteService.shared.fetchQuotes(for: symbols)
+        async let sparklinesTask: [String: [Double]] = {
+            var result: [String: [Double]] = [:]
+            await withTaskGroup(of: (String, [Double]).self) { group in
+                for symbol in symbols {
+                    group.addTask {
+                        let data = await StockQuoteService.shared.fetchSparkline(symbol: symbol)
+                        return (symbol.uppercased(), data)
+                    }
+                }
+                for await (symbol, data) in group {
+                    result[symbol] = data
+                }
+            }
+            return result
+        }()
+
+        let (quotes, newSparklines) = await (quotesTask, sparklinesTask)
+
+        for item in watchlistItems {
+            if let quote = quotes[item.ticker.uppercased()] {
+                item.updateQuote(quote)
             }
         }
+        sparklines.merge(newSparklines) { _, new in new }
+
+        lastRefreshTime = Date()
+        isRefreshing = false
     }
 }
 
-
 #Preview {
     WatchlistView()
+        .preferredColorScheme(.dark)
 }

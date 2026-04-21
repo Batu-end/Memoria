@@ -3,7 +3,6 @@
 //  Memoria
 //
 //  Created by Batu Demirtas on 1/30/26.
-//
 
 import SwiftUI
 import SwiftData
@@ -13,109 +12,98 @@ struct AddWatchlistItemView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var ticker = ""
-    @State private var priceString = ""
-    
-    // Validation Logic
-    private var isValidPrice: Bool {
-        return priceString.isEmpty || Double(priceString) != nil // Optional, so empty is valid
-    }
+    @State private var isLookingUp = false
+    @State private var lookedUpPrice: Double?
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Dark Background
-                Color(red: 0.11, green: 0.11, blue: 0.12)
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 24) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Ticker Field
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("TICKER")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.gray)
-                            
-                            TextField("e.g. AAPL", text: $ticker)
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .textFieldStyle(.plain)
-                                .padding()
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-                                )
-                        }
-                        
-                        // Target Price Field
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("TARGET PRICE (Optional)")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.gray)
-                            
-                            TextField("0.00", text: $priceString)
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .textFieldStyle(.plain)
-                                .padding()
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(
-                                            (!isValidPrice)
-                                                ? AnyShapeStyle(.red)
-                                                : AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)),
-                                            lineWidth: 1
-                                        )
-                                )
-                            
-                            if !isValidPrice {
-                                Text("Please enter a valid number")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
+            Form {
+                Section {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField("Ticker symbol", text: $ticker)
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .onSubmit {
+                                Task { await lookupPrice() }
                             }
-                        }
                     }
-                    .padding(24)
-                    
-                    Spacer()
-                    
-                    // --- "ADD" BUTTON ---
-                    Button(action: {
-                        let item = WatchlistItem(ticker: ticker.isEmpty ? "UNKNOWN" : ticker)
-                        if let price = Double(priceString) {
-                            item.priceAtAdd = price
+                } header: {
+                    Label("Stock", systemImage: "chart.line.uptrend.xyaxis")
+                } footer: {
+                    if isLookingUp {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .frame(width: 14, height: 14)
+                            Text("Looking up \(ticker.uppercased())...")
                         }
-                        modelContext.insert(item)
-                        dismiss()
-                    }) {
-                        Text("Track Stock")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                LinearGradient(colors: (ticker.isEmpty || !isValidPrice) ? [.gray, .gray] : [.blue, .purple], startPoint: .leading, endPoint: .trailing)
-                            )
-                            .cornerRadius(16)
-                            .shadow(color: .purple.opacity(0.3), radius: 10, x: 0, y: 5)
-                            .opacity((ticker.isEmpty || !isValidPrice) ? 0.5 : 1)
+                    } else if let price = lookedUpPrice {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                            Text("Current price: \(price, format: .currency(code: "USD"))")
+                        }
+                    } else if !ticker.isEmpty {
+                        Text("Press Return to look up the current price")
                     }
-                    .buttonStyle(.plain)
-                    .disabled(ticker.isEmpty || !isValidPrice)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 20)
                 }
+
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(Color(nsColor: .windowBackgroundColor))
             .navigationTitle("Add to Watchlist")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(.white)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Track") {
+                        addItem()
+                    }
+                    .disabled(ticker.isEmpty)
+                    .keyboardShortcut(.return, modifiers: .command)
                 }
             }
         }
+        .frame(minWidth: 360, minHeight: 180)
+        .onMouseBackButton()
+        .onAppear {
+            ticker = ""
+            isLookingUp = false
+            lookedUpPrice = nil
+        }
     }
+    
+    private func addItem() {
+        let item = WatchlistItem(ticker: ticker.uppercased())
+        
+        if let looked = lookedUpPrice {
+            item.priceAtAdd = looked
+        }
+        
+        modelContext.insert(item)
+        AnalyticsService.shared.log(.watchlistItemAdded, details: "Ticker: \(ticker)", context: modelContext)
+        dismiss()
+    }
+    
+    private func lookupPrice() async {
+        let symbol = ticker.trimmingCharacters(in: .whitespaces).uppercased()
+        guard !symbol.isEmpty else { return }
+        
+        isLookingUp = true
+        lookedUpPrice = nil
+        
+        if let quote = await StockQuoteService.shared.fetchQuote(for: symbol) {
+            lookedUpPrice = quote.currentPrice
+        }
+        
+        isLookingUp = false
+    }
+}
+
+#Preview {
+    AddWatchlistItemView()
+        .preferredColorScheme(.dark)
 }

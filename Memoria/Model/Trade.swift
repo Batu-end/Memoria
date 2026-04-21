@@ -17,6 +17,12 @@ final class Trade {
     var takeProfit: Double?
     var strategy: String?       // "Breakout", "Momentum", etc.
     var assetTypeRaw: String?   // "Stock", "ETF" (expandable to "Option", "Crypto" later)
+    var attachmentId: String?   // UUID representing the local OS file mapping
+    var rulesFollowed: [String] = []  // Tracking strategy discipline
+    var confidenceScore: Int = 0      // 1-5 rating of trade conviction
+    
+    @Relationship(deleteRule: .cascade, inverse: \Execution.trade)
+    var executions: [Execution] = []
     
     init(ticker: String, status: TradeStatus = .open, side: TradeSide = .long, assetType: AssetType = .stock) {
         self.id = UUID()
@@ -46,60 +52,30 @@ final class Trade {
         set { assetTypeRaw = newValue.rawValue }
     }
     
-    // MARK: - Computed Financials
+    // MARK: - Multi-Execution Helpers
     
-    /// Profit or Loss in dollars, accounting for quantity and side.
-    var pnl: Double? {
-        guard let entry = entryPrice, let exit = exitPrice else { return nil }
-        let qty = quantity ?? 1.0
-        let direction: Double = (side == .short) ? -1.0 : 1.0
-        return (exit - entry) * qty * direction
-    }
-    
-    /// Percentage return: (exit - entry) / entry * 100, adjusted for side.
-    var percentReturn: Double? {
-        guard let entry = entryPrice, let exit = exitPrice, entry != 0 else { return nil }
-        let direction: Double = (side == .short) ? -1.0 : 1.0
-        return ((exit - entry) / entry) * 100.0 * direction
-    }
-    
-    /// R-Multiple: how many "R" (units of risk) the trade returned.
-    /// R = (P&L) / (Risk per share * Quantity)
-    /// Falls back to percentReturn if no stop loss is set.
-    var rMultiple: Double? {
-        guard let entry = entryPrice, let sl = stopLoss else { return percentReturn }
-        let riskPerShare = abs(entry - sl)
-        guard riskPerShare > 0 else { return nil }
-        guard let realizedPnl = pnl else { return nil }
-        let qty = quantity ?? 1.0
-        return realizedPnl / (riskPerShare * qty)
-    }
-    
-    /// Risk-to-Reward ratio based on stop loss and take profit targets.
-    /// E.g., "1:3" means risking 1 to make 3.
-    var riskRewardRatio: Double? {
-        guard let entry = entryPrice, let sl = stopLoss, let tp = takeProfit else { return nil }
-        let risk = abs(entry - sl)
-        let reward = abs(tp - entry)
-        guard risk > 0 else { return nil }
-        return reward / risk
+    /// Returns the latest accounting snapshot for this trade from the background engine.
+    var math: TradeAccounting? {
+        AccountingEngine.shared.tradeAccounting[self.id]
     }
     
     var isWin: Bool {
-        guard let p = pnl else { return false }
-        return p > 0
+        guard let pnl = math?.totalPnl else { return false }
+        return pnl >= 0
     }
     
-    /// Number of calendar days the trade was held.
     var holdingDays: Int? {
         guard let closed = dateClosed else { return nil }
         return Calendar.current.dateComponents([.day], from: dateAdded, to: closed).day
     }
     
-    /// Total position size in dollars.
-    var positionSize: Double? {
-        guard let entry = entryPrice else { return nil }
-        return entry * (quantity ?? 1.0)
+    var riskRewardRatio: Double? {
+        guard let entry = entryPrice ?? math?.vwap,
+              let sl = stopLoss,
+              let tp = takeProfit else { return nil }
+        let risk: Double = abs(entry - sl)
+        let reward: Double = abs(tp - entry)
+        return (risk > 0) ? Double(reward / risk) : nil
     }
 }
 
