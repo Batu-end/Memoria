@@ -1,9 +1,23 @@
 # Memoria 🧘‍♂️
 ### TradingView is where you analyze the market. The Broker is where you manage the trade. Memoria is where you analyze yourself.
 
+![Memoria Dashboard](.github/assets/Dashboard.png)
+
 **Memoria** is a native macOS trading workstation designed to bridge the gap between mindless execution and professional reflection. While brokers focus on the "now," Memoria focuses on your **edge**. 
 
 Built with **SwiftUI** and **SwiftData**, it’s a high-density, local-first environment for traders who have outgrown spreadsheets and want a tool that matches the performance of their Mac.
+
+---
+
+## 📸 Preview
+
+<p align="center">
+  <img src=".github/assets/Stats.png" width="45%" />
+  <img src=".github/assets/Trades.png" width="45%" /> 
+</p>
+<p align="center">
+  <img src=".github/assets/Watchlist.png" width="90%" />
+</p>
 
 ---
 
@@ -37,3 +51,4 @@ Most trading journals are a chore. Memoria is a workstation. It is built around 
 git clone https://github.com/Batu-end/Memoria.git
 cd Memoria
 open Memoria.xcodeproj
+```
