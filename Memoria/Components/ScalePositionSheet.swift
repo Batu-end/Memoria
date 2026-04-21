@@ -62,9 +62,9 @@ struct ScalePositionSheet: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.vertical, 16)
-            
+
             Divider().background(Color.white.opacity(0.1))
-            
+
             Form {
                 Section {
                     Picker("Action", selection: $type) {
@@ -74,44 +74,55 @@ struct ScalePositionSheet: View {
                     .pickerStyle(.segmented)
                     .listRowBackground(Color.clear)
                     .onChange(of: type) { _, _ in
-                        // Clear inputs when switching types to avoid accidental overflow
                         quantityString = ""
                         amountString = ""
                     }
                 }
-                
+
                 Section {
                     HStack {
                         Text("Price")
                         Spacer()
-                        TextField("0.00", text: $priceString)
-                            .multilineTextAlignment(.trailing)
-                            .textFieldStyle(.plain)
-                            .foregroundStyle(.blue)
-                            .focused($focusedField, equals: .price)
-                            .onChange(of: priceString) { _, _ in 
-                                if focusedField == .price { syncFromQuantity() }
+                        ZStack(alignment: .trailing) {
+                            if priceString.isEmpty {
+                                Text("0.00")
+                                    .font(.body.monospaced())
+                                    .foregroundStyle(.tertiary)
+                                    .allowsHitTesting(false)
                             }
+                            TextField("", text: $priceString)
+                                .multilineTextAlignment(.trailing)
+                                .textFieldStyle(.plain)
+                                .foregroundStyle(.blue)
+                                .focused($focusedField, equals: .price)
+                                .onChange(of: priceString) { _, _ in
+                                    if focusedField == .price { syncFromQuantity() }
+                                }
+                        }
                     }
-                    
+
                     HStack {
                         Text("Amount ($)")
                         Spacer()
-                        TextField("0.00", text: $amountString)
-                            .multilineTextAlignment(.trailing)
-                            .textFieldStyle(.plain)
-                            .foregroundStyle(.white)
-                            .focused($focusedField, equals: .amount)
-                            .onChange(of: amountString) { _, newValue in
-                                if focusedField == .amount {
-                                    syncFromAmount(newValue)
-                                }
+                        ZStack(alignment: .trailing) {
+                            if amountString.isEmpty {
+                                Text("0.00")
+                                    .font(.body.monospaced())
+                                    .foregroundStyle(.tertiary)
+                                    .allowsHitTesting(false)
                             }
-                        
+                            TextField("", text: $amountString)
+                                .multilineTextAlignment(.trailing)
+                                .textFieldStyle(.plain)
+                                .foregroundStyle(.white)
+                                .focused($focusedField, equals: .amount)
+                                .onChange(of: amountString) { _, newValue in
+                                    if focusedField == .amount { syncFromAmount(newValue) }
+                                }
+                        }
+
                         if type == .sell {
                             Button("Max") {
-                                // Truncate (floor) to 4dp — rounding up would exceed actual
-                                // holding and fail the q <= realTimeEffectiveQuantity check
                                 let truncated = floor(realTimeEffectiveQuantity * 10000) / 10000
                                 let raw = String(format: "%.4f", truncated)
                                 quantityString = raw.replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
@@ -122,22 +133,28 @@ struct ScalePositionSheet: View {
                             .tint(.orange)
                         }
                     }
-                    
+
                     HStack {
                         Text("Quantity (Shares)")
                         Spacer()
-                        TextField("0", text: $quantityString)
-                            .multilineTextAlignment(.trailing)
-                            .textFieldStyle(.plain)
-                            .foregroundStyle(.blue)
-                            .focused($focusedField, equals: .quantity)
-                            .onChange(of: quantityString) { _, newValue in
-                                if focusedField == .quantity {
-                                    syncFromQuantity(newValue)
-                                }
+                        ZStack(alignment: .trailing) {
+                            if quantityString.isEmpty {
+                                Text("0")
+                                    .font(.body.monospaced())
+                                    .foregroundStyle(.tertiary)
+                                    .allowsHitTesting(false)
                             }
+                            TextField("", text: $quantityString)
+                                .multilineTextAlignment(.trailing)
+                                .textFieldStyle(.plain)
+                                .foregroundStyle(.blue)
+                                .focused($focusedField, equals: .quantity)
+                                .onChange(of: quantityString) { _, newValue in
+                                    if focusedField == .quantity { syncFromQuantity(newValue) }
+                                }
+                        }
                     }
-                    
+
                     DatePicker("Date", selection: $date, displayedComponents: .date)
                 } header: {
                     Text("Execution Details")
@@ -149,7 +166,7 @@ struct ScalePositionSheet: View {
                 }
             }
             .formStyle(.grouped)
-            
+
             // Stats Preview
             if let p = price, let q = quantity, p > 0, q > 0 {
                 VStack(spacing: 4) {
@@ -165,7 +182,7 @@ struct ScalePositionSheet: View {
                 .padding(.vertical, 20)
                 .background(Color.white.opacity(0.03))
             }
-            
+
             // Action Button
             Button(action: recordExecution) {
                 HStack {

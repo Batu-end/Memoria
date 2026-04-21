@@ -284,4 +284,8 @@ class AccountingEngine {
     func mathForTrade(_ id: UUID) -> TradeAccounting? {
         return tradeAccounting[id]
     }
+
+    func currentPrice(for ticker: String) -> Double? {
+        return quotes[ticker.uppercased()]?.currentPrice
+    }
 }
