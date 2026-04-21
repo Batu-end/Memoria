@@ -15,19 +15,24 @@ struct TradesListView: View {
     var accountingEngine = AccountingEngine.shared
     
     @State private var selectedFilter: String = "All"
+    @State private var selectedTypeFilter: String = "All"
     @State private var showAddTrade = false
     @State private var tradeToClose: Trade?
-    
+
     private let filters = ["All", "Open", "Closed"]
-    
+    private let typeFilters = ["All", "Stock", "ETF"]
+
     private var filteredTrades: [Trade] {
+        var trades: [Trade]
         switch selectedFilter {
-        case "Open":
-            return allTrades.filter { $0.status == .open }
-        case "Closed":
-            return allTrades.filter { $0.status == .closed }
-        default:
-            return Array(allTrades)
+        case "Open":   trades = allTrades.filter { $0.status == .open }
+        case "Closed": trades = allTrades.filter { $0.status == .closed }
+        default:       trades = Array(allTrades)
+        }
+        switch selectedTypeFilter {
+        case "Stock": return trades.filter { $0.assetType == .stock }
+        case "ETF":   return trades.filter { $0.assetType == .etf }
+        default:      return trades
         }
     }
     
@@ -86,11 +91,21 @@ struct TradesListView: View {
     // MARK: - Sub-views
     
     private var filterBar: some View {
-        Picker("Filter", selection: $selectedFilter) {
-            ForEach(filters, id: \.self) { Text($0).tag($0) }
+        HStack(spacing: 12) {
+            Picker("Status", selection: $selectedFilter) {
+                ForEach(filters, id: \.self) { Text($0).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 200)
+
+            Picker("Type", selection: $selectedTypeFilter) {
+                ForEach(typeFilters, id: \.self) { Text($0).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 160)
         }
-        .pickerStyle(.segmented)
-        .frame(maxWidth: 240)
         .padding(.horizontal)
     }
     
