@@ -144,6 +144,24 @@ class StockQuoteService {
         }
     }
     
+    /// Fetches today's intraday closes at 5-minute intervals for a sparkline.
+    func fetchSparkline(symbol: String) async -> [Double] {
+        let urlString = "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=5m&range=1d"
+        guard let url = URL(string: urlString) else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        guard let (data, _) = try? await URLSession.shared.data(for: request),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let chart = json["chart"] as? [String: Any],
+              let results = chart["result"] as? [[String: Any]],
+              let result = results.first,
+              let indicators = result["indicators"] as? [String: Any],
+              let quote = indicators["quote"] as? [[String: Any]],
+              let closes = quote.first?["close"] as? [Double?] else { return [] }
+        return closes.compactMap { $0 }
+    }
+
     // MARK: - Internal
     
     private func fetchSingleQuote(symbol: String) async -> StockQuote? {

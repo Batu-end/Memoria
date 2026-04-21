@@ -16,6 +16,7 @@ struct WatchlistView: View {
     @State private var showAddItem = false
     @State private var isRefreshing = false
     @State private var lastRefreshTime: Date?
+    @State private var sparklines: [String: [Double]] = [:]
 
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -46,7 +47,7 @@ struct WatchlistView: View {
                 } else {
                     List {
                         ForEach(watchlistItems) { item in
-                            WatchlistRowView(item: item, deleteItem: { deleteItem(item) })
+                            WatchlistRowView(item: item, sparkline: sparklines[item.ticker] ?? [], deleteItem: { deleteItem(item) })
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
@@ -109,13 +110,32 @@ struct WatchlistView: View {
         isRefreshing = true
 
         let symbols = watchlistItems.map { $0.ticker }
-        let quotes = await StockQuoteService.shared.fetchQuotes(for: symbols)
+
+        async let quotesTask = StockQuoteService.shared.fetchQuotes(for: symbols)
+        async let sparklinesTask: [String: [Double]] = {
+            var result: [String: [Double]] = [:]
+            await withTaskGroup(of: (String, [Double]).self) { group in
+                for symbol in symbols {
+                    group.addTask {
+                        let data = await StockQuoteService.shared.fetchSparkline(symbol: symbol)
+                        return (symbol.uppercased(), data)
+                    }
+                }
+                for await (symbol, data) in group {
+                    result[symbol] = data
+                }
+            }
+            return result
+        }()
+
+        let (quotes, newSparklines) = await (quotesTask, sparklinesTask)
 
         for item in watchlistItems {
             if let quote = quotes[item.ticker.uppercased()] {
                 item.updateQuote(quote)
             }
         }
+        sparklines.merge(newSparklines) { _, new in new }
 
         lastRefreshTime = Date()
         isRefreshing = false
