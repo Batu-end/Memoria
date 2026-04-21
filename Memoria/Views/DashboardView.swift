@@ -230,15 +230,32 @@ struct DashboardView: View {
             // Exposure bar
             if exposurePct > 0 {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(String(format: "%.0f%% exposure", exposurePct))
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 3) {
+                        if exposurePct > 70 {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.red)
+                        }
+                        Text(String(format: "%.0f%%", exposurePct))
+                            .font(.system(size: 9, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(exposurePct > 70 ? .red : exposurePct > 40 ? .orange : .secondary)
+                    }
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 2)
                                 .fill(Color.white.opacity(0.08))
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(exposurePct > 30 ? Color.orange : Color.blue)
+                                .fill(
+                                    LinearGradient(
+                                        stops: [
+                                            .init(color: .blue, location: 0),
+                                            .init(color: .orange, location: 0.5),
+                                            .init(color: .red, location: 1)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
                                 .frame(width: geo.size.width * min(exposurePct / 100, 1))
                         }
                     }
