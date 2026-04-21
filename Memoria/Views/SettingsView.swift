@@ -20,6 +20,7 @@ struct SettingsView: View {
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
     
     @AppStorage("mathEngineInspector") private var mathEngineInspectorEnabled: Bool = false
+    @AppStorage("unreadableDate") private var unreadableDate: Bool = false
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
@@ -129,6 +130,16 @@ struct SettingsView: View {
                     Text("Account Balance = Contributions + Trading Profits. If your contribution is negative, you are playing with 'House Money' (withdrawn more than you deposited).")
                 }
                 
+                Section {
+                    Toggle(isOn: $unreadableDate) {
+                        Label("Nearly unreadable date", systemImage: "character.cursor.ibeam")
+                    }
+                } header: {
+                    Text("Dashboard")
+                } footer: {
+                    Text("Applies a calligraphic font to the date header. Looks cool, barely readable.")
+                }
+
                 Section {
                     Toggle(isOn: $mathEngineInspectorEnabled) {
                         Label("Math Engine Inspector", systemImage: "function")
