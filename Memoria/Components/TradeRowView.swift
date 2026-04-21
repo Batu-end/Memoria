@@ -77,21 +77,36 @@ struct TradeRowView: View {
                 // Entry info
                 HStack(spacing: 8) {
                     if let entry = math?.vwap {
-                        Text(entry, format: .currency(code: "USD"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Entry")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundStyle(.tertiary)
+                            Text(entry, format: .currency(code: "USD"))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    
+
                     let qty = math?.effectiveQuantity ?? 0
                     if qty > 0 {
-                        Text("×\(Int(qty))")
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Shares")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundStyle(.tertiary)
+                            Text(qty.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", qty) : String(format: "%.2f", qty))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Date")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(.tertiary)
+                        Text(trade.dateAdded, format: .dateTime.month(.abbreviated).day())
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    
-                    Text(trade.dateAdded, format: .dateTime.month(.abbreviated).day())
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
             
