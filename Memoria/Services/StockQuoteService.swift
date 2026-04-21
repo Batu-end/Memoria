@@ -15,6 +15,8 @@ struct StockQuote: Equatable {
     let previousClose: Double
     let change: Double
     let changePercent: Double
+    let volume: Int?
+    let marketCap: Double?
 }
 
 struct HistoricalQuote: Identifiable, Equatable {
@@ -206,16 +208,19 @@ class StockQuoteService {
         let currentPrice = meta["regularMarketPrice"] as? Double ?? 0
         let previousClose = meta["chartPreviousClose"] as? Double
                          ?? meta["previousClose"] as? Double ?? 0
-        
         let change = currentPrice - previousClose
         let changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0
-        
+        let volume = meta["regularMarketVolume"] as? Int
+        let marketCap = meta["marketCap"] as? Double
+
         return StockQuote(
             symbol: symbol.uppercased(),
             currentPrice: currentPrice,
             previousClose: previousClose,
             change: change,
-            changePercent: changePercent
+            changePercent: changePercent,
+            volume: volume,
+            marketCap: marketCap
         )
     }
 }

@@ -18,6 +18,16 @@ struct WatchlistRowView: View {
     private var isUp: Bool { (item.priceChangePercent ?? 0) >= 0 }
     private var accentColor: Color { isUp ? .green : .red }
 
+    private func compact(_ value: Double) -> String {
+        switch value {
+        case 1_000_000_000_000...: return String(format: "%.1fT", value / 1_000_000_000_000)
+        case 1_000_000_000...:     return String(format: "%.1fB", value / 1_000_000_000)
+        case 1_000_000...:         return String(format: "%.1fM", value / 1_000_000)
+        case 1_000...:             return String(format: "%.1fK", value / 1_000)
+        default:                   return String(format: "%.0f", value)
+        }
+    }
+
     var body: some View {
         HStack(spacing: 0) {
 
@@ -32,11 +42,17 @@ struct WatchlistRowView: View {
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-                    } else {
-                        Text(item.dateAdded, format: .dateTime.month(.abbreviated).day())
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
                     }
+                    HStack(spacing: 6) {
+                        if let mc = item.marketCap {
+                            Text("MCap \(compact(mc))")
+                        }
+                        if let vol = item.volume {
+                            Text("Vol \(compact(Double(vol)))")
+                        }
+                    }
+                    .font(.system(size: 8.5, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.quaternary)
                 }
             }
             .frame(width: 120, alignment: .leading)

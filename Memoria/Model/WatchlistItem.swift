@@ -21,6 +21,8 @@ final class WatchlistItem {
     var currentPrice: Double?
     var priceChange: Double?
     var priceChangePercent: Double?
+    var volume: Int?
+    var marketCap: Double?
     var lastUpdated: Date?
     
     init(ticker: String, priceAtAdd: Double? = nil, notes: String? = nil) {
@@ -36,6 +38,8 @@ final class WatchlistItem {
         self.currentPrice = quote.currentPrice
         self.priceChange = quote.change
         self.priceChangePercent = quote.changePercent
+        self.volume = quote.volume
+        self.marketCap = quote.marketCap
         self.lastUpdated = Date()
         
         // If no reference price was set, use the first fetched price
