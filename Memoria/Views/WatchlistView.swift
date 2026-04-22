@@ -21,7 +21,10 @@ struct WatchlistView: View {
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     private func deleteItem(_ item: WatchlistItem) {
-        modelContext.delete(item)
+        withAnimation {
+            modelContext.delete(item)
+        }
+        try? modelContext.save()
     }
 
     private func moveItems(from source: IndexSet, to destination: Int) {
@@ -104,6 +107,25 @@ struct WatchlistView: View {
 
     // MARK: - Data Fetching
 
+    private func fetchBatchedSparklines(for symbols: [String]) async -> [String: [Double]] {
+        var result: [String: [Double]] = [:]
+        let batchSize = 8
+        let batches = stride(from: 0, to: symbols.count, by: batchSize)
+            .map { Array(symbols[$0..<min($0 + batchSize, symbols.count)]) }
+        for batch in batches {
+            await withTaskGroup(of: (String, [Double]).self) { group in
+                for symbol in batch {
+                    group.addTask {
+                        let data = await StockQuoteService.shared.fetchSparkline(symbol: symbol)
+                        return (symbol.uppercased(), data)
+                    }
+                }
+                for await (symbol, data) in group { result[symbol] = data }
+            }
+        }
+        return result
+    }
+
     private func refreshQuotes() async {
         guard !watchlistItems.isEmpty else { return }
 
@@ -112,21 +134,7 @@ struct WatchlistView: View {
         let symbols = watchlistItems.map { $0.ticker }
 
         async let quotesTask = StockQuoteService.shared.fetchQuotes(for: symbols)
-        async let sparklinesTask: [String: [Double]] = {
-            var result: [String: [Double]] = [:]
-            await withTaskGroup(of: (String, [Double]).self) { group in
-                for symbol in symbols {
-                    group.addTask {
-                        let data = await StockQuoteService.shared.fetchSparkline(symbol: symbol)
-                        return (symbol.uppercased(), data)
-                    }
-                }
-                for await (symbol, data) in group {
-                    result[symbol] = data
-                }
-            }
-            return result
-        }()
+        async let sparklinesTask: [String: [Double]] = fetchBatchedSparklines(for: symbols)
 
         let (quotes, newSparklines) = await (quotesTask, sparklinesTask)
 

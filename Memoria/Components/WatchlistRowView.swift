@@ -154,10 +154,12 @@ struct WatchlistRowView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .fill(.white.opacity(isRowHovered ? 0.04 : 0))
+                .allowsHitTesting(false)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(.white.opacity(0.05), lineWidth: 0.5)
+                .allowsHitTesting(false)
         )
         .onHover { isRowHovered = $0 }
     }
