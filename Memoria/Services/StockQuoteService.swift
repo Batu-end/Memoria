@@ -34,23 +34,23 @@ class StockQuoteService {
     /// Returns a dictionary keyed by symbol for easy lookup.
     func fetchQuotes(for symbols: [String]) async -> [String: StockQuote] {
         var results: [String: StockQuote] = [:]
-        
-        // Fetch each symbol concurrently using a task group
-        await withTaskGroup(of: (String, StockQuote?).self) { group in
-            for symbol in symbols {
-                group.addTask {
-                    let quote = await self.fetchSingleQuote(symbol: symbol)
-                    return (symbol.uppercased(), quote)
+        let batchSize = 8
+        let batches = stride(from: 0, to: symbols.count, by: batchSize)
+            .map { Array(symbols[$0..<min($0 + batchSize, symbols.count)]) }
+
+        for batch in batches {
+            await withTaskGroup(of: (String, StockQuote?).self) { group in
+                for symbol in batch {
+                    group.addTask {
+                        let quote = await self.fetchSingleQuote(symbol: symbol)
+                        return (symbol.uppercased(), quote)
+                    }
                 }
-            }
-            
-            for await (symbol, quote) in group {
-                if let quote = quote {
-                    results[symbol] = quote
+                for await (symbol, quote) in group {
+                    if let quote = quote { results[symbol] = quote }
                 }
             }
         }
-        
         return results
     }
     
