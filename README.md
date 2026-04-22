@@ -1,5 +1,7 @@
 # Memoria 🧘‍♂️
-### TradingView is where you analyze the market. The Broker is where you manage the trade. Memoria is where you analyze yourself.
+#### TradingView is where you analyze the market. 
+#### The Broker is where you manage the trade.
+#### Memoria is where you analyze yourself.
 
 ![Memoria Dashboard](.github/assets/Dashboard.png)
 
