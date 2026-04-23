@@ -81,9 +81,15 @@ class AccountingEngine {
         self.startingBalance = startingBalance
         recalculate()
     }
-    
+
     func update(quotes: [String: StockQuote]) {
         self.quotes = quotes
+        recalculate()
+    }
+
+    /// Call immediately after mutating a trade's executions so the UI reflects
+    /// the change without waiting for the DashboardView @Query onChange cycle.
+    func refresh() {
         recalculate()
     }
     

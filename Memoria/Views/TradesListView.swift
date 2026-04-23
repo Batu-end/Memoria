@@ -19,6 +19,7 @@ struct TradesListView: View {
     @State private var showAddTrade = false
     @State private var tradeToClose: Trade?
     @State private var tradeToScale: Trade?
+    @State private var tradeToDelete: Trade?
 
     private let filters = ["All", "Open", "Closed"]
     private let typeFilters = ["All", "Stock", "ETF"]
@@ -89,6 +90,22 @@ struct TradesListView: View {
             .sheet(item: $tradeToScale) { trade in
                 ScalePositionSheet(trade: trade, livePrice: accountingEngine.currentPrice(for: trade.ticker))
             }
+            .alert("Delete Trade?", isPresented: Binding(
+                get: { tradeToDelete != nil },
+                set: { if !$0 { tradeToDelete = nil } }
+            )) {
+                Button("Delete", role: .destructive) {
+                    if let trade = tradeToDelete {
+                        withAnimation { modelContext.delete(trade) }
+                    }
+                    tradeToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { tradeToDelete = nil }
+            } message: {
+                if let trade = tradeToDelete {
+                    Text("\"\(trade.ticker)\" will be permanently removed.")
+                }
+            }
         }
     }
     
@@ -143,7 +160,7 @@ struct TradesListView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(.ultraThinMaterial)
-        .cornerRadius(14)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.08), lineWidth: 1))
         .padding(.horizontal)
     }
@@ -170,9 +187,7 @@ struct TradesListView: View {
                     }
                     
                     Button(role: .destructive) {
-                        withAnimation {
-                            modelContext.delete(trade)
-                        }
+                        tradeToDelete = trade
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
