@@ -62,8 +62,8 @@ struct LocalImageView: View {
         
         isLoading = true
         
-        // Push heavy file I/O to background thread
-        let data = await Task.detached(priority: .userInitiated) {
+        // Push heavy file I/O off the cooperative thread pool
+        let data: Data? = await Task(priority: .userInitiated) {
             LocalAttachmentService.shared.loadImageData(id: id)
         }.value
         
