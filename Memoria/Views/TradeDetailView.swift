@@ -484,17 +484,21 @@ struct TradeDetailView: View {
             .foregroundStyle(.orange).padding(.bottom, 4)
 
             if let m = math {
+                let vwap = m.vwap ?? 0
+                let realized = m.realizedPnl ?? 0
+                let unrealized = m.unrealizedPnl
+                let totalPnl = m.totalPnl ?? 0
                 Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 10) {
                     GridRow {
-                        debugItem(label: "VWAP", value: String(format: "%.2f", m.vwap ?? 0))
+                        debugItem(label: "VWAP", value: String(format: "%.2f", vwap))
                         debugItem(label: "EFF. QTY", value: String(format: "%.2f", m.effectiveQuantity))
                     }
                     GridRow {
-                        debugItem(label: "REALIZED", value: String(format: "%.2f", m.realizedPnl ?? 0))
-                        debugItem(label: "UNREALIZED", value: String(format: "%.2f", m.unrealizedPnl ?? 0))
+                        debugItem(label: "REALIZED", value: String(format: "%.2f", realized))
+                        debugItem(label: "UNREALIZED", value: String(format: "%.2f", unrealized))
                     }
                     GridRow {
-                        debugItem(label: "TOTAL PNL", value: String(format: "%.2f", m.totalPnl ?? 0))
+                        debugItem(label: "TOTAL PNL", value: String(format: "%.2f", totalPnl))
                         debugItem(label: "WIN STATUS", value: m.winStatus ? "WIN (>=0)" : "LOSE")
                     }
                 }

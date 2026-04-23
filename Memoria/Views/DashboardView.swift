@@ -105,11 +105,6 @@ struct DashboardView: View {
 
             Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
                 .font(.custom("Bodoni 72", size: 64))
-            Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
-                .font(.custom("Didot", size: 64))
-            Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
-                .font(.custom("Optima-Bold", size: 64))
-                .contentTransition(.numericText())
                 
             // Market Status Indicator
             HStack(spacing: 6) {
