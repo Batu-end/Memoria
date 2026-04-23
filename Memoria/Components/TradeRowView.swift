@@ -167,7 +167,7 @@ struct TradeRowView: View {
         }
         .padding(14)
         .background(.ultraThinMaterial)
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: strokeColor.opacity(0.1), radius: 5, x: 0, y: 5)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
