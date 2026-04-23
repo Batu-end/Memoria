@@ -46,19 +46,19 @@ struct CapturedTrade {
 @Observable
 class AccountingEngine {
     static let shared = AccountingEngine()
-    
+
     // Output
     var portfolioState: AccountingState = .empty
     private(set) var tradeAccounting: [UUID: TradeAccounting] = [:]
-    
+
     // Internal state
     private var trades: [Trade] = []
     private var quotes: [String: StockQuote] = [:]
     private var startingBalance: Double = 1600.0
-    
+
     private var calculationTask: Task<Void, Never>?
-    
-    private init() {}
+
+    nonisolated private init() {}
     
     /// Clears all cached math and trades. Use only for testing or full data resets.
     func reset() {
@@ -161,7 +161,7 @@ class AccountingEngine {
                     }
                 }
                 
-                if let entry = math.vwap, let pnl = math.totalPnl, totalCostBasis > 0 {
+                if let pnl = math.totalPnl, totalCostBasis > 0 {
                     math.percentReturn = (pnl / totalCostBasis) * 100.0
                 }
                 
@@ -251,11 +251,13 @@ class AccountingEngine {
             newState.maxDrawdown = maxDD
             
             if Task.isCancelled { return }
-            
+
             // 4. Update state on Main Thread
+            let finalState = newState
+            let finalTradeMath = newTradeMath
             await MainActor.run {
-                self.portfolioState = newState
-                self.tradeAccounting = newTradeMath
+                self.portfolioState = finalState
+                self.tradeAccounting = finalTradeMath
             }
         }
     }
