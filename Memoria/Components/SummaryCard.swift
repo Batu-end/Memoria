@@ -25,7 +25,7 @@ struct SummaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .background(.ultraThinMaterial)
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: color.opacity(0.1), radius: 5, x: 0, y: 5)
         .overlay(
             RoundedRectangle(cornerRadius: 12)

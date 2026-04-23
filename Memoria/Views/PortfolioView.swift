@@ -105,7 +105,7 @@ struct PortfolioView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .background(.ultraThinMaterial)
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
     }
 
@@ -229,7 +229,7 @@ struct PositionRowView: View {
         }
         .padding()
         .background(.ultraThinMaterial)
-        .cornerRadius(14)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
                 .stroke(

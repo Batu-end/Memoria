@@ -227,11 +227,11 @@ struct TradeDetailView: View {
                     Capsule().fill(Color.white.opacity(0.05)).frame(height: 8)
                     Rectangle()
                         .fill(LinearGradient(colors: [.red.opacity(0.6), .red.opacity(0.1)], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: max(0, entryPos), height: 8).cornerRadius(4)
+                        .frame(width: max(0, entryPos), height: 8).clipShape(RoundedRectangle(cornerRadius: 4))
                     Rectangle()
                         .fill(LinearGradient(colors: [.green.opacity(0.1), .green.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(0, width - entryPos), height: 8)
-                        .offset(x: entryPos).cornerRadius(4)
+                        .offset(x: entryPos).clipShape(RoundedRectangle(cornerRadius: 4))
                     Rectangle().fill(.white).frame(width: 2, height: 16).offset(x: entryPos - 1, y: -4)
                     Circle().fill(.white).frame(width: 12, height: 12)
                         .shadow(color: .black.opacity(0.5), radius: 3)
@@ -388,7 +388,7 @@ struct TradeDetailView: View {
                 .frame(minHeight: 120)
                 .padding(12)
                 .background(Color.white.opacity(0.03))
-                .cornerRadius(12)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding([.horizontal, .bottom], 16)
         }
@@ -505,7 +505,7 @@ struct TradeDetailView: View {
         }
         .padding()
         .background(Color.orange.opacity(0.05))
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.2), lineWidth: 1))
         .padding(.horizontal)
     }

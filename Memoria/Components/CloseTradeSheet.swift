@@ -76,7 +76,7 @@ struct CloseTradeSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background((realizedPnl >= 0 ? Color.green : Color.red).opacity(0.07))
-                .cornerRadius(10)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 // Date
                 HStack {
@@ -97,7 +97,7 @@ struct CloseTradeSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .background(Color.white.opacity(0.05))
-                        .cornerRadius(6)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                         .buttonStyle(.plain)
 
                     Button(action: closeTrade) {
@@ -107,7 +107,7 @@ struct CloseTradeSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                             .background(Color.blue)
-                            .cornerRadius(6)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
                 }
@@ -121,10 +121,14 @@ struct CloseTradeSheet: View {
 
     private func closeTrade() {
         let closeExecType: ExecutionType = trade.side == .long ? .sell : .buy
-        trade.executions.append(Execution(price: exitPrice, quantity: effectiveQty, type: closeExecType, date: dateClosed))
+        let execution = Execution(price: exitPrice, quantity: effectiveQty, type: closeExecType, date: dateClosed)
+        modelContext.insert(execution)
+        trade.executions.append(execution)
         trade.exitPrice = exitPrice
         trade.dateClosed = dateClosed
         trade.status = .closed
+
+        AccountingEngine.shared.refresh()
 
         AnalyticsService.shared.log(
             .tradeClosed,

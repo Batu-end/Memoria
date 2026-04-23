@@ -194,7 +194,7 @@ struct ScalePositionSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(isValid ? (type == .buy ? Color.blue : Color.orange) : Color.gray.opacity(0.3))
-                .cornerRadius(12)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding()
             }
             .buttonStyle(.plain)
@@ -229,23 +229,26 @@ struct ScalePositionSheet: View {
     
     private func recordExecution() {
         guard let p = price, let q = quantity else { return }
-        
+
         let execution = Execution(price: p, quantity: q, type: type, date: date)
+        modelContext.insert(execution)
         trade.executions.append(execution)
-        
-        // Auto-close logic (use epsilon to handle floating-point residue)
-        if abs(realTimeEffectiveQuantity) < 0.0001 {
+
+        // Auto-close: selling the last remaining shares closes the trade
+        if type != .buy && abs(realTimeEffectiveQuantity) < 0.0001 {
             trade.status = .closed
             trade.dateClosed = date
-            trade.exitPrice = p // Use last sell price as master exit price
+            trade.exitPrice = p
         }
-        
+
+        AccountingEngine.shared.refresh()
+
         AnalyticsService.shared.log(
             type == .buy ? .tradeOpened : .tradeClosed,
             details: "Scaled \(type.rawValue) \(q) shares of \(trade.ticker) @ \(p)",
             context: modelContext
         )
-        
+
         dismiss()
     }
 }

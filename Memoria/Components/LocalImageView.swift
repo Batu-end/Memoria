@@ -20,7 +20,7 @@ struct LocalImageView: View {
                 image
                     .resizable()
                     .scaledToFit()
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             } else if isLoading && attachmentId != nil {
                 // Loading container
                 ZStack {

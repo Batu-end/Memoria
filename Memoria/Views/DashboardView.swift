@@ -49,7 +49,7 @@ struct DashboardView: View {
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 headerView
                 .padding(.top, 8)
@@ -64,7 +64,7 @@ struct DashboardView: View {
             .padding(.bottom, 40)
         }
         .background(
-            LinearGradient(colors: [Color(red: 0.05, green: 0.05, blue: 0.06), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.11), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
         )
         .task {
@@ -104,7 +104,11 @@ struct DashboardView: View {
                 .tracking(2)
 
             Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
-                .font(.custom("Bodoni 72", size: 80))
+                .font(.custom("Bodoni 72", size: 64))
+            Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
+                .font(.custom("Didot", size: 64))
+            Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
+                .font(.custom("Optima-Bold", size: 64))
                 .contentTransition(.numericText())
                 
             // Market Status Indicator
@@ -129,10 +133,9 @@ struct DashboardView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, minHeight: 160)
-        .padding(.bottom, 16)
         .opacity(isDashboardReady ? 1 : 0)
     }
-
+    
     // MARK: - Active Portfolio Hub
 
     private var activePortfolioSection: some View {
