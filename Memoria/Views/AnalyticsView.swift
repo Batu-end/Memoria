@@ -117,14 +117,14 @@ struct AnalyticsView: View {
                                                 innerRadius: .ratio(0.6),
                                                 angularInset: 2
                                             )
-                                            .cornerRadius(4)
+                                            .clipShape(RoundedRectangle(cornerRadius: 4))
                                             .foregroundStyle(by: .value("Strategy", stat.name))
                                         }
                                         .frame(height: 150)
                                     }
                                     .padding()
                                     .background(.ultraThinMaterial)
-                                    .cornerRadius(16)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
                                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
                                     
                                     // Win/Loss Frequency Matrix
@@ -154,7 +154,7 @@ struct AnalyticsView: View {
                                     }
                                     .padding()
                                     .background(.ultraThinMaterial)
-                                    .cornerRadius(16)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
                                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
                                 }
                                 .padding(.horizontal)
@@ -208,7 +208,7 @@ struct EdgeMetricCard: View {
         }
         .padding()
         .background(.ultraThinMaterial)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
     }
 }
@@ -245,7 +245,7 @@ struct StrategyScorecard: View {
             .padding(16)
         }
         .background(.ultraThinMaterial)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
     }
 }

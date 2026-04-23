@@ -104,7 +104,7 @@ struct SettingsView: View {
                                     .padding(.vertical, 12)
                                     .background(Color.green.opacity(0.15))
                                     .foregroundStyle(.green)
-                                    .cornerRadius(10)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                             .buttonStyle(.plain)
                             
@@ -118,7 +118,7 @@ struct SettingsView: View {
                                     .padding(.vertical, 12)
                                     .background(Color.red.opacity(0.15))
                                     .foregroundStyle(.red)
-                                    .cornerRadius(10)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                             .buttonStyle(.plain)
                         }
@@ -291,7 +291,7 @@ struct CapitalAdjustmentSheet: View {
                 }
                 .padding()
                 .background(.ultraThinMaterial)
-                .cornerRadius(20)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
                 
                 if isOverDrawing {
                     HStack(spacing: 4) {
@@ -317,7 +317,7 @@ struct CapitalAdjustmentSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(isOverDrawing ? Color.gray : (isDepositing ? Color.green : Color.red))
-                        .cornerRadius(16)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
                         .padding(.horizontal, 20)
                 }
                 .buttonStyle(.plain)
