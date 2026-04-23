@@ -18,5 +18,7 @@ struct AccountingState {
     var maxDrawdown: Double = 0
     var equityCurve: [EquityDataPoint] = []
     
+    nonisolated init() {}
+
     static let empty = AccountingState()
 }

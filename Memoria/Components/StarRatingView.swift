@@ -24,7 +24,7 @@ struct StarRatingView: View {
 }
 
 #Preview {
-    @State var rating = 3
+    @Previewable @State var rating = 3
     return StarRatingView(rating: $rating)
         .padding()
         .background(Color.black)
