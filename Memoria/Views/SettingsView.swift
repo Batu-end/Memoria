@@ -26,12 +26,14 @@ struct SettingsView: View {
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
-    
-    // Capital Management States
-    @State private var showCapitalSheet = false
-    @State private var isDepositing = true
-    @State private var adjustmentAmount: Double = 0.0
+
+    @State private var capitalAction: CapitalAction?
     @State private var liveQuotes: [String: StockQuote] = [:]
+
+    private enum CapitalAction: Identifiable {
+        case deposit, withdraw
+        var id: Self { self }
+    }
     
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     
@@ -97,9 +99,7 @@ struct SettingsView: View {
                         
                         HStack(spacing: 15) {
                             Button {
-                                isDepositing = true
-                                adjustmentAmount = 0
-                                showCapitalSheet = true
+                                capitalAction = .deposit
                             } label: {
                                 Label("Deposit", systemImage: "plus.circle.fill")
                                     .frame(maxWidth: .infinity)
@@ -111,9 +111,7 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                             
                             Button {
-                                isDepositing = false
-                                adjustmentAmount = 0
-                                showCapitalSheet = true
+                                capitalAction = .withdraw
                             } label: {
                                 Label("Withdraw", systemImage: "minus.circle.fill")
                                     .frame(maxWidth: .infinity)
@@ -182,15 +180,15 @@ struct SettingsView: View {
                 .onReceive(refreshTimer) { _ in
                     Task { await fetchLiveQuotes() }
                 }
-                .sheet(isPresented: $showCapitalSheet) {
-                CapitalAdjustmentSheet(isDepositing: isDepositing, currentBalance: currentBalance) { amount in
-                    if isDepositing {
-                        startingBalance += amount
-                    } else {
-                        startingBalance -= amount
+                .sheet(item: $capitalAction) { action in
+                    CapitalAdjustmentSheet(isDepositing: action == .deposit, currentBalance: currentBalance) { amount in
+                        if action == .deposit {
+                            startingBalance += amount
+                        } else {
+                            startingBalance -= amount
+                        }
                     }
                 }
-            }
             .alert("Erase All Data?", isPresented: $showingResetAlert) {
                 TextField("Type \"DELETE\" to confirm", text: $confirmationText)
                 
