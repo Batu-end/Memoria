@@ -19,48 +19,59 @@ struct TradeDetailView: View {
 
     @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
 
+    @Namespace private var zoomNamespace
     @State private var showManageSheet = false
-@State private var showEnlargeSheet = false
+    @State private var showEnlargeSheet = false
+    @State private var resetTrigger = false
     @State private var livePrice: Double?
 
     private let refreshTimer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                headerSection
+        ZStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    headerSection
 
-                HStack(alignment: .top, spacing: 20) {
-                    VStack(spacing: 16) {
-                        detailsAndPnLSection
+                    HStack(alignment: .top, spacing: 20) {
+                        VStack(spacing: 16) {
+                            detailsAndPnLSection
 
-                        if trade.stopLoss != nil || trade.takeProfit != nil {
-                            rmulGaugeSection
-                            targetsSection
+                            if trade.stopLoss != nil || trade.takeProfit != nil {
+                                rmulGaugeSection
+                                HStack(alignment: .top, spacing: 16) {
+                                    targetsSection
+                                    riskImpactCard
+                                }
+                            }
+
+                            executionChecklistSection
+
+                            if mathEngineInspectorEnabled { debugMathSection }
                         }
+                        .frame(maxWidth: .infinity, alignment: .top)
 
-                        executionChecklistSection
-
-                        if mathEngineInspectorEnabled { debugMathSection }
+                        VStack(spacing: 16) {
+                            attachmentAndNotesSection
+                            executionHistorySection
+                        }
+                        .frame(maxWidth: .infinity, alignment: .top)
                     }
-                    .frame(maxWidth: .infinity, alignment: .top)
-
-                    VStack(spacing: 16) {
-                        attachmentAndNotesSection
-                        executionHistorySection
-                    }
-                    .frame(maxWidth: .infinity, alignment: .top)
                 }
+                .padding()
             }
-            .padding()
-        }
-        .background(
-            LinearGradient(
-                colors: [Color(red: 0.12, green: 0.12, blue: 0.13), Color(red: 0.07, green: 0.07, blue: 0.08)],
-                startPoint: .top, endPoint: .bottom
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.12, green: 0.12, blue: 0.13), Color(red: 0.07, green: 0.07, blue: 0.08)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .ignoresSafeArea()
             )
-            .ignoresSafeArea()
-        )
+
+            if showEnlargeSheet {
+                imageOverlay
+            }
+        }
         .onAppear { if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .onReceive(refreshTimer) { _ in if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .navigationTitle(trade.ticker)
@@ -75,7 +86,60 @@ struct TradeDetailView: View {
             }
         }
         .sheet(isPresented: $showManageSheet) { ScalePositionSheet(trade: trade, livePrice: livePrice) }
-        .sheet(isPresented: $showEnlargeSheet) { FullScreenImageView(attachmentId: trade.attachmentId) }
+        .onExitCommand {
+            if showEnlargeSheet {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
+            }
+        }
+    }
+
+    private var imageOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.92)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
+                }
+
+            ZoomableScrollView(attachmentId: trade.attachmentId, resetTrigger: $resetTrigger)
+                .matchedGeometryEffect(id: "attachment", in: zoomNamespace)
+                .gesture(
+                    DragGesture().onEnded { value in
+                        if value.translation.height > 100 {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
+                        }
+                    }
+                )
+
+            VStack {
+                HStack {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Button { resetTrigger = true } label: {
+                        Image(systemName: "gobackward")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+                Spacer()
+            }
+        }
+        .transition(.opacity)
     }
 
     // MARK: - Header
@@ -226,10 +290,10 @@ struct TradeDetailView: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.white.opacity(0.05)).frame(height: 8)
                     Rectangle()
-                        .fill(LinearGradient(colors: [.red.opacity(0.6), .red.opacity(0.1)], startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(colors: [.red.opacity(0.25), .white.opacity(0.06)], startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(0, entryPos), height: 8).clipShape(RoundedRectangle(cornerRadius: 4))
                     Rectangle()
-                        .fill(LinearGradient(colors: [.green.opacity(0.1), .green.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(colors: [.white.opacity(0.06), .green.opacity(0.25)], startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(0, width - entryPos), height: 8)
                         .offset(x: entryPos).clipShape(RoundedRectangle(cornerRadius: 4))
                     Rectangle().fill(.white).frame(width: 2, height: 16).offset(x: entryPos - 1, y: -4)
@@ -266,8 +330,73 @@ struct TradeDetailView: View {
             }
         }
         .padding(16)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.05), lineWidth: 0.5))
+    }
+
+    // MARK: - Risk Impact
+
+    private var riskImpactCard: some View {
+        let entry = math?.vwap ?? trade.entryPrice ?? 0
+        let qty = math?.effectiveQuantity ?? 0
+        let direction: Double = trade.side == .long ? 1.0 : -1.0
+        let currentPrice = trade.status == .closed
+            ? (trade.exitPrice ?? entry)
+            : (livePrice ?? entry)
+
+        let riskDollars: Double? = trade.stopLoss.map { sl in
+            abs((entry - sl) * qty)
+        }
+        let rewardDollars: Double? = trade.takeProfit.map { tp in
+            abs((tp - entry) * qty)
+        }
+        let stopDistPct: Double? = trade.stopLoss.flatMap { sl in
+            currentPrice > 0 ? abs((sl - currentPrice) / currentPrice) * 100 * direction * -1 : nil
+        }
+        let targetDistPct: Double? = trade.takeProfit.flatMap { tp in
+            currentPrice > 0 ? abs((tp - currentPrice) / currentPrice) * 100 : nil
+        }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("RISK IMPACT")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 10) {
+                if let risk = riskDollars {
+                    riskRow(label: "Max Risk", value: String(format: "$%.0f", risk), color: .red,
+                            sub: stopDistPct.map { String(format: "%.1f%% away", $0) })
+                }
+                if let reward = rewardDollars {
+                    riskRow(label: "Max Reward", value: String(format: "$%.0f", reward), color: .green,
+                            sub: targetDistPct.map { String(format: "%.1f%% away", $0) })
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.05), lineWidth: 0.5))
+    }
+
+    private func riskRow(label: String, value: String, color: Color, sub: String?) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                if let sub {
+                    Text(sub)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            Spacer()
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(color)
+        }
     }
 
     // MARK: - Checklist
@@ -328,10 +457,15 @@ struct TradeDetailView: View {
             // Hero Image
             ZStack(alignment: .bottomTrailing) {
                 LocalImageView(attachmentId: trade.attachmentId)
+                    .matchedGeometryEffect(id: "attachment", in: zoomNamespace)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 140, maxHeight: 240)
                     .clipped()
-                    .onTapGesture { if trade.attachmentId != nil { showEnlargeSheet = true } }
+                    .onTapGesture {
+                        if trade.attachmentId != nil {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
+                        }
+                    }
                     .dropDestination(for: Data.self) { items, _ in
                         guard let imageData = items.first else { return false }
                         if let newId = LocalAttachmentService.shared.saveImage(from: imageData) {
@@ -352,7 +486,9 @@ struct TradeDetailView: View {
                     }
 
                 if trade.attachmentId != nil {
-                    Button(action: { showEnlargeSheet = true }) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
+                    }) {
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                             .font(.system(size: 10, weight: .semibold))
                             .padding(7)
@@ -389,6 +525,16 @@ struct TradeDetailView: View {
                 .padding(12)
                 .background(Color.white.opacity(0.03))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(alignment: .topLeading) {
+                    if (trade.notes ?? "").isEmpty {
+                        Text("Tap to add your notes...")
+                            .font(.system(.body, design: .serif))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .allowsHitTesting(false)
+                    }
+                }
             }
             .padding([.horizontal, .bottom], 16)
         }

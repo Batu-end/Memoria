@@ -23,6 +23,7 @@ struct SettingsView: View {
     
     @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
     @AppStorage("unreadableDate", store: .app) private var unreadableDate: Bool = false
+    @AppStorage("monochromeLogos", store: .app) private var monochromeLogos: Bool = false
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
@@ -132,12 +133,25 @@ struct SettingsView: View {
                 
                 Section {
                     Toggle(isOn: $unreadableDate) {
-                        Label("Nearly unreadable date", systemImage: "character.cursor.ibeam")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Nearly unreadable date", systemImage: "character.cursor.ibeam")
+                            Text("Calligraphic font on the date header. Looks cool, barely readable.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 28)
+                        }
+                    }
+                    Toggle(isOn: $monochromeLogos) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Monochrome logos", systemImage: "circle.lefthalf.filled")
+                            Text("Strips color from all ticker logos.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 28)
+                        }
                     }
                 } header: {
-                    Text("Dashboard")
-                } footer: {
-                    Text("Applies a calligraphic font to the date header. Looks cool, barely readable.")
+                    Text("Appearance")
                 }
 
                 Section {
@@ -246,6 +260,7 @@ struct SettingsView: View {
         personalityRaw = TraderPersonality.human.rawValue
         unreadableDate = false
         mathEngineInspectorEnabled = false
+        monochromeLogos = false
 
         AccountingEngine.shared.reset()
     }
