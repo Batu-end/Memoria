@@ -18,7 +18,13 @@ struct MemoriaApp: App {
             ActivityLog.self,
             WatchlistItem.self,
         ])
+
+        #if DEBUG
+        let storeURL = URL.applicationSupportDirectory.appending(path: "Memoria_Debug.sqlite")
+        let modelConfiguration = ModelConfiguration(schema: schema, url: storeURL)
+        #else
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        #endif
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
