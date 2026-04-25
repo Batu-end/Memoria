@@ -13,6 +13,8 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var trades: [Trade]
     @Query private var watchlistItems: [WatchlistItem]
+    @Query private var accountSnapshots: [AccountSnapshot]
+    @Query private var activityLogs: [ActivityLog]
     
     @AppStorage("startingBalance") private var startingBalance: Double = 0.0
     @AppStorage("traderName") private var traderName: String = ""
@@ -235,13 +237,19 @@ struct SettingsView: View {
     }
     
     private func eraseAllData() {
-        for trade in trades {
-            modelContext.delete(trade)
-        }
-        for item in watchlistItems {
-            modelContext.delete(item)
-        }
+        for trade in trades { modelContext.delete(trade) }
+        for item in watchlistItems { modelContext.delete(item) }
+        for snapshot in accountSnapshots { modelContext.delete(snapshot) }
+        for log in activityLogs { modelContext.delete(log) }
         try? modelContext.save()
+
+        startingBalance = 0.0
+        traderName = ""
+        personalityRaw = TraderPersonality.human.rawValue
+        unreadableDate = false
+        mathEngineInspectorEnabled = false
+
+        AccountingEngine.shared.reset()
     }
 }
 
