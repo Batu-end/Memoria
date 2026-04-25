@@ -85,6 +85,7 @@ struct AddTradeView: View {
                                         .font(.system(size: 17, weight: .bold, design: .rounded))
                                         .foregroundStyle(.tertiary)
                                         .allowsHitTesting(false)
+                                        // .padding(.leading, 48)
                                 }
                                 TextField("", text:$ticker)
                                     .font(.system(size: 17, weight: .bold, design: .rounded))
@@ -228,6 +229,16 @@ struct AddTradeView: View {
                         .lineSpacing(3)
                         .frame(minHeight: 60)
                         .scrollContentBackground(.hidden)
+                        .overlay(alignment: .topLeading) {
+                            if notes.isEmpty {
+                                Text("Tap to add your notes...")
+                                    .font(.system(.body, design: .serif))
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.top, 1)
+                                    .padding(.leading, 8)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                 } header: {
                     Text("Optional").foregroundStyle(.tertiary).font(.footnote)
                 }
