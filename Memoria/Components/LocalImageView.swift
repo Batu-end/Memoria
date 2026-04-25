@@ -37,13 +37,16 @@ struct LocalImageView: View {
                         .fill(Color(red: 0.15, green: 0.15, blue: 0.16))
                         .aspectRatio(16/9, contentMode: .fit)
                     
-                    VStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         Image(systemName: "photo.on.rectangle")
                             .font(.system(size: 24))
                             .foregroundStyle(.secondary)
-                        Text("No Technical Setup Attached")
+                        Text("No Attachment")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        Text("Drop an image here to remember your setup.")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
                 }
             }
