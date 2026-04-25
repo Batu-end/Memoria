@@ -19,48 +19,56 @@ struct TradeDetailView: View {
 
     @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
 
+    @Namespace private var zoomNamespace
     @State private var showManageSheet = false
-@State private var showEnlargeSheet = false
+    @State private var showEnlargeSheet = false
+    @State private var resetTrigger = false
     @State private var livePrice: Double?
 
     private let refreshTimer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                headerSection
+        ZStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    headerSection
 
-                HStack(alignment: .top, spacing: 20) {
-                    VStack(spacing: 16) {
-                        detailsAndPnLSection
+                    HStack(alignment: .top, spacing: 20) {
+                        VStack(spacing: 16) {
+                            detailsAndPnLSection
 
-                        if trade.stopLoss != nil || trade.takeProfit != nil {
-                            rmulGaugeSection
-                            targetsSection
+                            if trade.stopLoss != nil || trade.takeProfit != nil {
+                                rmulGaugeSection
+                                targetsSection
+                            }
+
+                            executionChecklistSection
+
+                            if mathEngineInspectorEnabled { debugMathSection }
                         }
+                        .frame(maxWidth: .infinity, alignment: .top)
 
-                        executionChecklistSection
-
-                        if mathEngineInspectorEnabled { debugMathSection }
+                        VStack(spacing: 16) {
+                            attachmentAndNotesSection
+                            executionHistorySection
+                        }
+                        .frame(maxWidth: .infinity, alignment: .top)
                     }
-                    .frame(maxWidth: .infinity, alignment: .top)
-
-                    VStack(spacing: 16) {
-                        attachmentAndNotesSection
-                        executionHistorySection
-                    }
-                    .frame(maxWidth: .infinity, alignment: .top)
                 }
+                .padding()
             }
-            .padding()
-        }
-        .background(
-            LinearGradient(
-                colors: [Color(red: 0.12, green: 0.12, blue: 0.13), Color(red: 0.07, green: 0.07, blue: 0.08)],
-                startPoint: .top, endPoint: .bottom
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.12, green: 0.12, blue: 0.13), Color(red: 0.07, green: 0.07, blue: 0.08)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .ignoresSafeArea()
             )
-            .ignoresSafeArea()
-        )
+
+            if showEnlargeSheet {
+                imageOverlay
+            }
+        }
         .onAppear { if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .onReceive(refreshTimer) { _ in if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .navigationTitle(trade.ticker)
@@ -75,7 +83,60 @@ struct TradeDetailView: View {
             }
         }
         .sheet(isPresented: $showManageSheet) { ScalePositionSheet(trade: trade, livePrice: livePrice) }
-        .sheet(isPresented: $showEnlargeSheet) { FullScreenImageView(attachmentId: trade.attachmentId) }
+        .onExitCommand {
+            if showEnlargeSheet {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
+            }
+        }
+    }
+
+    private var imageOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.92)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
+                }
+
+            ZoomableScrollView(attachmentId: trade.attachmentId, resetTrigger: $resetTrigger)
+                .matchedGeometryEffect(id: "attachment", in: zoomNamespace)
+                .gesture(
+                    DragGesture().onEnded { value in
+                        if value.translation.height > 100 {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
+                        }
+                    }
+                )
+
+            VStack {
+                HStack {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Button { resetTrigger = true } label: {
+                        Image(systemName: "gobackward")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+                Spacer()
+            }
+        }
+        .transition(.opacity)
     }
 
     // MARK: - Header
@@ -328,10 +389,15 @@ struct TradeDetailView: View {
             // Hero Image
             ZStack(alignment: .bottomTrailing) {
                 LocalImageView(attachmentId: trade.attachmentId)
+                    .matchedGeometryEffect(id: "attachment", in: zoomNamespace)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 140, maxHeight: 240)
                     .clipped()
-                    .onTapGesture { if trade.attachmentId != nil { showEnlargeSheet = true } }
+                    .onTapGesture {
+                        if trade.attachmentId != nil {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
+                        }
+                    }
                     .dropDestination(for: Data.self) { items, _ in
                         guard let imageData = items.first else { return false }
                         if let newId = LocalAttachmentService.shared.saveImage(from: imageData) {
@@ -352,7 +418,9 @@ struct TradeDetailView: View {
                     }
 
                 if trade.attachmentId != nil {
-                    Button(action: { showEnlargeSheet = true }) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
+                    }) {
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                             .font(.system(size: 10, weight: .semibold))
                             .padding(7)

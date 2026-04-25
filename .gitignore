@@ -26,3 +26,6 @@ build/
 # Fastlane (If you use it later)
 fastlane/report.xml
 fastlane/screenshots
+
+# Agent instructions
+CLAUDE.md
