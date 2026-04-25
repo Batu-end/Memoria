@@ -309,6 +309,32 @@ struct DashboardView: View {
             
             HStack(spacing: 15) {
                 SummaryCard(
+                    title: "Profit Factor",
+                    value: accountingEngine.portfolioState.profitFactor > 0 ? String(format: "%.2f", accountingEngine.portfolioState.profitFactor) : "0.00",
+                    color: accountingEngine.portfolioState.profitFactor >= 1.5 ? .green : .orange
+                )
+                SummaryCard(
+                    title: "Avg Win / Loss",
+                    value: "\(Int(accountingEngine.portfolioState.avgWin)) / \(Int(abs(accountingEngine.portfolioState.avgLoss)))",
+                    color: accountingEngine.portfolioState.avgWin > abs(accountingEngine.portfolioState.avgLoss) ? .green : .red
+                )
+            }
+
+            HStack(spacing: 15) {
+                SummaryCard(
+                    title: "Avg Hold Time",
+                    value: avgHoldTimeFormatted,
+                    color: .cyan
+                )
+                SummaryCard(
+                    title: "Max Drawdown",
+                    value: String(format: "%.1f%%", accountingEngine.portfolioState.maxDrawdown),
+                    color: accountingEngine.portfolioState.maxDrawdown < 5.0 ? .green : .red
+                )
+            }
+
+            HStack(spacing: 15) {
+                SummaryCard(
                     title: "Open Trades",
                     value: "\(accountingEngine.portfolioState.openTradesCount)",
                     color: .blue
@@ -317,36 +343,6 @@ struct DashboardView: View {
                     title: "Closed Trades",
                     value: "\(accountingEngine.portfolioState.closedTradesCount)",
                     color: .purple
-                )
-            }
-            
-            // New Advanced Metrics Cards using exactly the same aesthetic
-            HStack(spacing: 15) {
-                SummaryCard(
-                    title: "Profit Factor",
-                    value: accountingEngine.portfolioState.profitFactor > 0 ? String(format: "%.2f", accountingEngine.portfolioState.profitFactor) : "0.00",
-                    color: accountingEngine.portfolioState.profitFactor >= 1.5 ? .green : .orange
-                )
-                
-                SummaryCard(
-                    title: "Avg Win / Loss",
-                    value: "\(Int(accountingEngine.portfolioState.avgWin)) / \(Int(abs(accountingEngine.portfolioState.avgLoss)))",
-                    color: accountingEngine.portfolioState.avgWin > abs(accountingEngine.portfolioState.avgLoss) ? .green : .red
-                )
-            }
-            
-            // Third Row of Advanced Metrics
-            HStack(spacing: 15) {
-                SummaryCard(
-                    title: "Avg Hold Time",
-                    value: avgHoldTimeFormatted,
-                    color: .cyan
-                )
-                
-                SummaryCard(
-                    title: "Max Drawdown",
-                    value: String(format: "%.1f%%", accountingEngine.portfolioState.maxDrawdown),
-                    color: accountingEngine.portfolioState.maxDrawdown < 5.0 ? .green : .red
                 )
             }
         }
