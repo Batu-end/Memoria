@@ -39,7 +39,10 @@ struct TradeDetailView: View {
 
                             if trade.stopLoss != nil || trade.takeProfit != nil {
                                 rmulGaugeSection
-                                targetsSection
+                                HStack(alignment: .top, spacing: 16) {
+                                    targetsSection
+                                    riskImpactCard
+                                }
                             }
 
                             executionChecklistSection
@@ -327,8 +330,73 @@ struct TradeDetailView: View {
             }
         }
         .padding(16)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.05), lineWidth: 0.5))
+    }
+
+    // MARK: - Risk Impact
+
+    private var riskImpactCard: some View {
+        let entry = math?.vwap ?? trade.entryPrice ?? 0
+        let qty = math?.effectiveQuantity ?? 0
+        let direction: Double = trade.side == .long ? 1.0 : -1.0
+        let currentPrice = trade.status == .closed
+            ? (trade.exitPrice ?? entry)
+            : (livePrice ?? entry)
+
+        let riskDollars: Double? = trade.stopLoss.map { sl in
+            abs((entry - sl) * qty)
+        }
+        let rewardDollars: Double? = trade.takeProfit.map { tp in
+            abs((tp - entry) * qty)
+        }
+        let stopDistPct: Double? = trade.stopLoss.flatMap { sl in
+            currentPrice > 0 ? abs((sl - currentPrice) / currentPrice) * 100 * direction * -1 : nil
+        }
+        let targetDistPct: Double? = trade.takeProfit.flatMap { tp in
+            currentPrice > 0 ? abs((tp - currentPrice) / currentPrice) * 100 : nil
+        }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("RISK IMPACT")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 10) {
+                if let risk = riskDollars {
+                    riskRow(label: "Max Risk", value: String(format: "$%.0f", risk), color: .red,
+                            sub: stopDistPct.map { String(format: "%.1f%% away", $0) })
+                }
+                if let reward = rewardDollars {
+                    riskRow(label: "Max Reward", value: String(format: "$%.0f", reward), color: .green,
+                            sub: targetDistPct.map { String(format: "%.1f%% away", $0) })
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.05), lineWidth: 0.5))
+    }
+
+    private func riskRow(label: String, value: String, color: Color, sub: String?) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                if let sub {
+                    Text(sub)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            Spacer()
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(color)
+        }
     }
 
     // MARK: - Checklist
@@ -457,6 +525,16 @@ struct TradeDetailView: View {
                 .padding(12)
                 .background(Color.white.opacity(0.03))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(alignment: .topLeading) {
+                    if (trade.notes ?? "").isEmpty {
+                        Text("Tap to add your notes...")
+                            .font(.system(.body, design: .serif))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            .allowsHitTesting(false)
+                    }
+                }
             }
             .padding([.horizontal, .bottom], 16)
         }

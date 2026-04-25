@@ -144,7 +144,7 @@ struct SettingsView: View {
                     Toggle(isOn: $monochromeLogos) {
                         VStack(alignment: .leading, spacing: 2) {
                             Label("Monochrome logos", systemImage: "circle.lefthalf.filled")
-                            Text("Strips color from all fetched ticker logos.")
+                            Text("Strips color from all ticker logos.")
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                                 .padding(.leading, 28)
