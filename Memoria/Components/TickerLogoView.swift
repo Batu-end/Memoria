@@ -10,6 +10,8 @@ import SwiftUI
 struct TickerLogoView: View {
     let ticker: String
     var size: CGFloat = 40
+
+    @AppStorage("monochromeLogos", store: .app) private var monochromeLogos: Bool = false
     
     // Hash the first letter to consistently assign the same beautiful gradient to the same missing ticker
     private var gradientColors: [Color] {
@@ -34,6 +36,7 @@ struct TickerLogoView: View {
                 image
                     .resizable()
                     .scaledToFit()
+                    .grayscale(monochromeLogos ? 1.0 : 0.0)
                     .frame(width: size, height: size)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
