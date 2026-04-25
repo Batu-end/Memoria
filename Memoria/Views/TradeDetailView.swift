@@ -290,10 +290,10 @@ struct TradeDetailView: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.white.opacity(0.05)).frame(height: 8)
                     Rectangle()
-                        .fill(LinearGradient(colors: [.red.opacity(0.6), .red.opacity(0.1)], startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(colors: [.red.opacity(0.25), .white.opacity(0.06)], startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(0, entryPos), height: 8).clipShape(RoundedRectangle(cornerRadius: 4))
                     Rectangle()
-                        .fill(LinearGradient(colors: [.green.opacity(0.1), .green.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(colors: [.white.opacity(0.06), .green.opacity(0.25)], startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(0, width - entryPos), height: 8)
                         .offset(x: entryPos).clipShape(RoundedRectangle(cornerRadius: 4))
                     Rectangle().fill(.white).frame(width: 2, height: 16).offset(x: entryPos - 1, y: -4)
@@ -530,8 +530,8 @@ struct TradeDetailView: View {
                         Text("Tap to add your notes...")
                             .font(.system(.body, design: .serif))
                             .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 16)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
                             .allowsHitTesting(false)
                     }
                 }
