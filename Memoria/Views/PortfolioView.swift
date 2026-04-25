@@ -10,7 +10,7 @@ import SwiftData
 
 struct PortfolioView: View {
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("startingBalance") private var startingBalance: Double = 1600.0
+    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 1600.0
 
     @Query(filter: #Predicate<Trade> { $0.statusRaw == "Open" }, sort: \Trade.dateAdded, order: .reverse)
     private var openTrades: [Trade]

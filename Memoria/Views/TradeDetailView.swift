@@ -17,7 +17,7 @@ struct TradeDetailView: View {
 
     var math: TradeAccounting? { engine.tradeAccounting[trade.id] }
 
-    @AppStorage("mathEngineInspector") private var mathEngineInspectorEnabled: Bool = false
+    @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
 
     @State private var showManageSheet = false
 @State private var showEnlargeSheet = false

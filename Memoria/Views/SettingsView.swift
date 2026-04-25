@@ -16,13 +16,13 @@ struct SettingsView: View {
     @Query private var accountSnapshots: [AccountSnapshot]
     @Query private var activityLogs: [ActivityLog]
     
-    @AppStorage("startingBalance") private var startingBalance: Double = 0.0
-    @AppStorage("traderName") private var traderName: String = ""
-    @AppStorage("traderPersonality") private var personalityRaw: String = TraderPersonality.human.rawValue
+    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 0.0
+    @AppStorage("traderName", store: .app) private var traderName: String = ""
+    @AppStorage("traderPersonality", store: .app) private var personalityRaw: String = TraderPersonality.human.rawValue
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
     
-    @AppStorage("mathEngineInspector") private var mathEngineInspectorEnabled: Bool = false
-    @AppStorage("unreadableDate") private var unreadableDate: Bool = false
+    @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
+    @AppStorage("unreadableDate", store: .app) private var unreadableDate: Bool = false
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
