@@ -142,10 +142,25 @@ struct TradeRowView: View {
                     }
                 } else {
                     let unrealized = math?.unrealizedPnl ?? 0
-                    if unrealized != 0 {
-                        Text(unrealized >= 0 ? "+\(unrealized, specifier: "%.2f")" : "\(unrealized, specifier: "%.2f")")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(unrealized >= 0 ? Color.green : Color.red)
+                    let realized = math?.realizedPnl ?? 0
+                    if unrealized != 0 || realized != 0 {
+                        if unrealized != 0 {
+                            Text(unrealized >= 0 ? "+\(unrealized, specifier: "%.2f")" : "\(unrealized, specifier: "%.2f")")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundStyle(unrealized >= 0 ? Color.green : Color.red)
+                        }
+
+                        if realized != 0 {
+                            HStack(spacing: 3) {
+                                Text("LOCK")
+                                    .font(.system(size: 7, weight: .bold))
+                                    .foregroundStyle(.tertiary)
+                                    .tracking(0.5)
+                                Text(realized >= 0 ? "+\(realized, specifier: "%.2f")" : "\(realized, specifier: "%.2f")")
+                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                    .foregroundStyle((realized >= 0 ? Color.green : Color.red).opacity(0.65))
+                            }
+                        }
 
                         if let vwap = math?.vwap, let sl = trade.stopLoss, vwap > 0 {
                             let dist = ((sl - vwap) / vwap) * 100 * (trade.side == .short ? -1 : 1)
