@@ -13,6 +13,7 @@ struct MemoriaApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Trade.self,
+            Execution.self,
             AccountSnapshot.self,
             ActivityLog.self,
             WatchlistItem.self,
