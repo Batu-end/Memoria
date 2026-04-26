@@ -86,11 +86,13 @@ struct TradeDetailView: View {
             }
         }
         .sheet(isPresented: $showManageSheet) { ScalePositionSheet(trade: trade, livePrice: livePrice) }
+        #if os(macOS)
         .onExitCommand {
             if showEnlargeSheet {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
             }
         }
+        #endif
     }
 
     private var imageOverlay: some View {

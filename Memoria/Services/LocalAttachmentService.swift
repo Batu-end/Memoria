@@ -47,17 +47,23 @@ class LocalAttachmentService {
     
     /// Directly processes raw image data (useful for floating screenshots or clipboard).
     func saveImage(from data: Data) -> String? {
+        #if os(macOS)
         guard let nsImage = NSImage(data: data),
               let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             print("Memoria Error: Disallowed or corrupted data dropped.")
             return nil
         }
-        
-        // Re-encode natively to standard high-quality JPEG
         let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
         guard let jpegData = bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
             return nil
         }
+        #else
+        guard let uiImage = UIImage(data: data),
+              let jpegData = uiImage.jpegData(compressionQuality: 0.8) else {
+            print("Memoria Error: Disallowed or corrupted data dropped.")
+            return nil
+        }
+        #endif
         
         guard let targetFolder = baseDirectoryURL else { return nil }
         
