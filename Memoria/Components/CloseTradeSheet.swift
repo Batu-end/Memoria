@@ -16,6 +16,7 @@ struct CloseTradeSheet: View {
     let marketPrice: Double?
 
     @State private var dateClosed: Date = Date()
+    @State private var didClose = false
 
     private var effectiveQty: Double {
         let opening = trade.executions.filter { $0.type == (trade.side == .long ? .buy : .sell) }.reduce(0) { $0 + $1.quantity }
@@ -119,6 +120,7 @@ struct CloseTradeSheet: View {
         #endif
         .onMouseBackButton()
         .background(.ultraThinMaterial)
+        .sensoryFeedback(.success, trigger: didClose)
     }
 
     private func closeTrade() {
@@ -137,6 +139,7 @@ struct CloseTradeSheet: View {
             details: "Ticker: \(trade.ticker), P&L: \(String(format: "%.2f", realizedPnl))",
             context: modelContext
         )
+        didClose = true
         dismiss()
     }
 }
