@@ -200,7 +200,9 @@ struct ScalePositionSheet: View {
             .buttonStyle(.plain)
             .disabled(!isValid)
         }
+        #if os(macOS)
         .frame(width: 320, height: 500)
+        #endif
         .onMouseBackButton()
         .background(.ultraThinMaterial)
     }
