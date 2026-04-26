@@ -114,7 +114,9 @@ struct CloseTradeSheet: View {
             }
             .padding(16)
         }
+        #if os(macOS)
         .frame(width: 260)
+        #endif
         .onMouseBackButton()
         .background(.ultraThinMaterial)
     }
