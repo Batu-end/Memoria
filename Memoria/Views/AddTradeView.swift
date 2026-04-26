@@ -281,7 +281,9 @@ struct AddTradeView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            #if os(macOS)
             .background(Color(nsColor: .windowBackgroundColor))
+            #endif
             .navigationTitle(isPastTrade ? "Log Past Trade" : "New Trade")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -70,11 +70,19 @@ struct LocalImageView: View {
             LocalAttachmentService.shared.loadImageData(id: id)
         }.value
         
+        #if os(macOS)
         if let data = data, let nsImage = NSImage(data: data) {
             loadedImage = Image(nsImage: nsImage)
         } else {
             loadedImage = nil
         }
+        #else
+        if let data = data, let uiImage = UIImage(data: data) {
+            loadedImage = Image(uiImage: uiImage)
+        } else {
+            loadedImage = nil
+        }
+        #endif
         
         isLoading = false
     }
