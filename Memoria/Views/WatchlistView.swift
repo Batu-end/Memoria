@@ -69,6 +69,7 @@ struct WatchlistView: View {
                 }
             }
             .navigationTitle("Watchlist")
+            .darkNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     if let lastRefresh = lastRefreshTime {

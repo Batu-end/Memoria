@@ -37,6 +37,11 @@ struct ContentView: View {
                 }
         }
         .onAppear { installMouseBackButtonMonitor() }
+        #if os(iOS)
+        .toolbarBackground(Color(red: 0.05, green: 0.05, blue: 0.06), for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .tabBar)
+        #endif
     }
 }
 

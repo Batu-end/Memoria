@@ -285,6 +285,7 @@ struct AddTradeView: View {
             .background(Color(nsColor: .windowBackgroundColor))
             #endif
             .navigationTitle(isPastTrade ? "Log Past Trade" : "New Trade")
+            .darkNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

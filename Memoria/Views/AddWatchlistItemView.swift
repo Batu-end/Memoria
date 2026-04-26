@@ -56,6 +56,7 @@ struct AddWatchlistItemView: View {
             .background(Color(nsColor: .windowBackgroundColor))
             #endif
             .navigationTitle("Add to Watchlist")
+            .darkNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

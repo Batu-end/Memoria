@@ -180,6 +180,7 @@ struct AnalyticsView: View {
                 }
             }
             .navigationTitle("Analytics")
+            .darkNavigationBar()
         }
     }
 }

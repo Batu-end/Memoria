@@ -188,6 +188,7 @@ struct SettingsView: View {
                         .ignoresSafeArea()
                 )
                 .navigationTitle("Settings")
+                .darkNavigationBar()
                 .task {
                     await fetchLiveQuotes()
                 }
