@@ -5,6 +5,7 @@
 import SwiftUI
 import SwiftData
 import Combine
+import PhotosUI
 
 struct TradeDetailView: View {
     @Environment(\.modelContext) private var modelContext
@@ -36,6 +37,7 @@ struct TradeDetailView: View {
     @State private var showEnlargeSheet = false
     @State private var resetTrigger = false
     @State private var livePrice: Double?
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     private let refreshTimer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
 
@@ -98,6 +100,17 @@ struct TradeDetailView: View {
             }
         }
         .sheet(isPresented: $showManageSheet) { ScalePositionSheet(trade: trade, livePrice: livePrice) }
+        .onChange(of: selectedPhotoItem) { _, item in
+            Task {
+                if let data = try? await item?.loadTransferable(type: Data.self) {
+                    if let newId = LocalAttachmentService.shared.saveImage(from: data) {
+                        if let old = trade.attachmentId { LocalAttachmentService.shared.deleteImage(id: old) }
+                        trade.attachmentId = newId
+                    }
+                }
+                selectedPhotoItem = nil
+            }
+        }
         #if os(macOS)
         .onExitCommand {
             if showEnlargeSheet {
@@ -480,6 +493,7 @@ struct TradeDetailView: View {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
                         }
                     }
+                    #if os(macOS)
                     .dropDestination(for: Data.self) { items, _ in
                         guard let imageData = items.first else { return false }
                         if let newId = LocalAttachmentService.shared.saveImage(from: imageData) {
@@ -498,6 +512,16 @@ struct TradeDetailView: View {
                         }
                         return false
                     }
+                    #else
+                    .overlay {
+                        if trade.attachmentId == nil {
+                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                                Color.clear
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    #endif
 
                 if trade.attachmentId != nil {
                     Button(action: {
@@ -511,6 +535,21 @@ struct TradeDetailView: View {
                     .buttonStyle(.plain)
                     .padding(10)
                 }
+
+                #if os(iOS)
+                if trade.attachmentId != nil {
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(7)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                #endif
             }
             .frame(maxWidth: .infinity)
 
