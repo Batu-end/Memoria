@@ -180,7 +180,7 @@ struct SettingsView: View {
                             Text("Math Engine Inspector")
                         } icon: {
                             Image(systemName: "function")
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 } header: {
