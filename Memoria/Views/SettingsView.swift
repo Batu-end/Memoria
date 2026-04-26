@@ -51,20 +51,20 @@ struct SettingsView: View {
                             .submitLabel(.done)
                     }
 
-                    HStack {
-                        Label("I am a...", systemImage: "theatermasks.fill")
-                        Spacer()
-                        Picker("", selection: Binding(
-                            get: { personality },
-                            set: { personalityRaw = $0.rawValue }
-                        )) {
-                            ForEach(TraderPersonality.allCases, id: \.self) { p in
-                                Text("\(p.emoji) \(p.rawValue)").tag(p)
-                            }
+                    Picker(selection: Binding(
+                        get: { personality },
+                        set: { personalityRaw = $0.rawValue }
+                    )) {
+                        ForEach(TraderPersonality.allCases, id: \.self) { p in
+                            Text("\(p.emoji) \(p.rawValue)")
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .tag(p)
                         }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
+                    } label: {
+                        Label("I am a...", systemImage: "theatermasks.fill")
                     }
+                    .pickerStyle(.menu)
                 } header: {
                     Text("Profile")
                 }

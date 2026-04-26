@@ -20,7 +20,9 @@ struct MemoriaApp: App {
         ])
 
         #if DEBUG
-        let storeURL = URL.applicationSupportDirectory.appending(path: "Memoria_Debug.sqlite")
+        let supportDir = URL.applicationSupportDirectory
+        try? FileManager.default.createDirectory(at: supportDir, withIntermediateDirectories: true)
+        let storeURL = supportDir.appending(path: "Memoria_Debug.sqlite")
         let modelConfiguration = ModelConfiguration(schema: schema, url: storeURL)
         #else
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
