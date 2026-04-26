@@ -134,6 +134,15 @@ struct SettingsView: View {
                 
                 Section {
                     Toggle(isOn: $unreadableDate) {
+                        #if os(macOS)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Nearly unreadable date", systemImage: "character.cursor.ibeam")
+                            Text("Calligraphic font on the date header. Looks cool, barely readable.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 28)
+                        }
+                        #else
                         HStack(spacing: 14) {
                             Image(systemName: "character.cursor.ibeam")
                                 .font(.system(size: 20))
@@ -149,10 +158,20 @@ struct SettingsView: View {
                                     .lineLimit(2)
                             }
                         }
+                        #endif
                     }
                     .padding(.vertical, 4)
                     
                     Toggle(isOn: $monochromeLogos) {
+                        #if os(macOS)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Monochrome logos", systemImage: "circle.lefthalf.filled")
+                            Text("Strips color from all ticker logos.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 28)
+                        }
+                        #else
                         HStack(spacing: 14) {
                             Image(systemName: "circle.lefthalf.filled")
                                 .font(.system(size: 20))
@@ -168,6 +187,7 @@ struct SettingsView: View {
                                     .lineLimit(2)
                             }
                         }
+                        #endif
                     }
                     .padding(.vertical, 4)
                 } header: {
