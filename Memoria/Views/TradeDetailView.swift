@@ -89,6 +89,7 @@ struct TradeDetailView: View {
         .onAppear { if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .onReceive(refreshTimer) { _ in if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .navigationTitle(trade.ticker)
+        .darkNavigationBar()
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if trade.status == .open {

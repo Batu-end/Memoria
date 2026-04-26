@@ -54,7 +54,7 @@ class AccountingEngine {
     // Internal state
     private var trades: [Trade] = []
     private var quotes: [String: StockQuote] = [:]
-    private var startingBalance: Double = 1600.0
+    private var startingBalance: Double = 0.0
 
     private var calculationTask: Task<Void, Never>?
 

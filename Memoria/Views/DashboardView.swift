@@ -10,6 +10,20 @@ import SwiftData
 import Combine
 import Charts
 
+extension View {
+    func darkNavigationBar() -> some View {
+        #if os(iOS)
+        self
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color(red: 0.05, green: 0.05, blue: 0.06), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+        #else
+        self
+        #endif
+    }
+}
+
 
 enum BenchmarkTimeframe: String, CaseIterable {
     case ytd = "YTD"
@@ -18,7 +32,7 @@ enum BenchmarkTimeframe: String, CaseIterable {
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 1600.0
+    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 0.0
     @AppStorage("traderName", store: .app) private var traderName: String = ""
     @AppStorage("traderPersonality", store: .app) private var personalityRaw: String = TraderPersonality.human.rawValue
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }

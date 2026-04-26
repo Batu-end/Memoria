@@ -72,6 +72,7 @@ struct TradesListView: View {
                 }
             }
             .navigationTitle("Trades")
+            .darkNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddTrade = true }) {
