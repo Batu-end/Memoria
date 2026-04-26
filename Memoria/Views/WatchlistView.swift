@@ -17,6 +17,9 @@ struct WatchlistView: View {
     @State private var isRefreshing = false
     @State private var lastRefreshTime: Date?
     @State private var sparklines: [String: [Double]] = [:]
+    
+    @State private var showiOSAlert = false
+    @State private var iosTickerInput = ""
 
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -88,7 +91,13 @@ struct WatchlistView: View {
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showAddItem = true }) {
+                    Button(action: {
+                        #if os(iOS)
+                        showiOSAlert = true
+                        #else
+                        showAddItem = true
+                        #endif
+                    }) {
                         Label("Add Symbol", systemImage: "plus")
                     }
                     .labelStyle(.titleAndIcon)
@@ -100,6 +109,30 @@ struct WatchlistView: View {
                     .onDisappear {
                         Task { await refreshQuotes() }
                     }
+            }
+            .alert("Add Watchlist Symbol", isPresented: $showiOSAlert) {
+                TextField("Ticker (e.g. AAPL)", text: $iosTickerInput)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    #endif
+                
+                Button("Cancel", role: .cancel) {
+                    iosTickerInput = ""
+                }
+                
+                Button("Add") {
+                    let symbol = iosTickerInput.trimmingCharacters(in: .whitespaces).uppercased()
+                    if !symbol.isEmpty {
+                        let item = WatchlistItem(ticker: symbol)
+                        modelContext.insert(item)
+                        AnalyticsService.shared.log(.watchlistItemAdded, details: "Ticker: \(symbol)", context: modelContext)
+                        iosTickerInput = ""
+                        Task { await refreshQuotes() }
+                    }
+                }
+            } message: {
+                Text("Enter the stock ticker symbol you want to track.")
             }
             .task {
                 await refreshQuotes()
