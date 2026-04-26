@@ -133,23 +133,42 @@ struct SettingsView: View {
                 
                 Section {
                     Toggle(isOn: $unreadableDate) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Label("Nearly unreadable date", systemImage: "character.cursor.ibeam")
-                            Text("Calligraphic font on the date header. Looks cool, barely readable.")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                                .padding(.leading, 28)
+                        HStack(spacing: 14) {
+                            Image(systemName: "character.cursor.ibeam")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Nearly unreadable date")
+                                    .font(.system(size: 16))
+                                Text("Calligraphic font on the date header.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
                         }
                     }
+                    .padding(.vertical, 4)
+                    
                     Toggle(isOn: $monochromeLogos) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Label("Monochrome logos", systemImage: "circle.lefthalf.filled")
-                            Text("Strips color from all ticker logos.")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                                .padding(.leading, 28)
+                        HStack(spacing: 14) {
+                            Image(systemName: "circle.lefthalf.filled")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Monochrome logos")
+                                    .font(.system(size: 16))
+                                Text("Strips color from all ticker logos.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
                         }
                     }
+                    .padding(.vertical, 4)
                 } header: {
                     Text("Appearance")
                 }
