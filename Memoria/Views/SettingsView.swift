@@ -48,6 +48,7 @@ struct SettingsView: View {
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.plain)
                             .foregroundStyle(.blue)
+                            .submitLabel(.done)
                     }
 
                     HStack {
@@ -212,6 +213,7 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.immediately)
                 .background(
                     LinearGradient(colors: [Color(red: 0.05, green: 0.05, blue: 0.06), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                         .ignoresSafeArea()
