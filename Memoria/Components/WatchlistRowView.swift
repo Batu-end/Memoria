@@ -43,19 +43,29 @@ struct WatchlistRowView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         if let mc = item.marketCap {
-                            Text("MCap \(compact(mc))")
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("MCap")
+                                Text(compact(mc))
+                            }
                         }
                         if let vol = item.volume {
-                            Text("Vol \(compact(Double(vol)))")
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Vol")
+                                Text(compact(Double(vol)))
+                            }
                         }
                     }
                     .font(.system(size: 8.5, weight: .medium).monospacedDigit())
                     .foregroundStyle(.quaternary)
                 }
             }
+            #if os(iOS)
+            .frame(minWidth: 70, maxWidth: 90, alignment: .leading)
+            #else
             .frame(width: 120, alignment: .leading)
+            #endif
 
             // MARK: Sparkline
             Group {
@@ -98,6 +108,7 @@ struct WatchlistRowView: View {
                 }
             }
             .frame(maxWidth: .infinity)
+            .padding(.leading, 12)
 
             // MARK: Price + Performance
             VStack(alignment: .trailing, spacing: 4) {
@@ -119,9 +130,14 @@ struct WatchlistRowView: View {
                         .background(accentColor.opacity(0.12), in: Capsule())
                 }
             }
+            #if os(iOS)
+            .frame(width: 75, alignment: .trailing)
+            #else
             .frame(width: 90, alignment: .trailing)
+            #endif
 
             // MARK: All-Time
+            #if os(macOS)
             if let changeSince = item.changeSinceAdded {
                 VStack(spacing: 2) {
                     Text("All-Time")
@@ -147,6 +163,7 @@ struct WatchlistRowView: View {
             .buttonStyle(.plain)
             .onHover { isHovered = $0 }
             .padding(.leading, 10)
+            #endif
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
