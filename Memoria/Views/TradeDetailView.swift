@@ -18,6 +18,18 @@ struct TradeDetailView: View {
     var math: TradeAccounting? { engine.tradeAccounting[trade.id] }
 
     @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var outerLayout: AnyLayout {
+        horizontalSizeClass == .regular
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: 20))
+            : AnyLayout(VStackLayout(spacing: 20))
+    }
+    private var innerLayout: AnyLayout {
+        horizontalSizeClass == .regular
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: 16))
+            : AnyLayout(VStackLayout(spacing: 16))
+    }
 
     @Namespace private var zoomNamespace
     @State private var showManageSheet = false
@@ -33,13 +45,13 @@ struct TradeDetailView: View {
                 VStack(spacing: 20) {
                     headerSection
 
-                    HStack(alignment: .top, spacing: 20) {
+                    outerLayout {
                         VStack(spacing: 16) {
                             detailsAndPnLSection
 
                             if trade.stopLoss != nil || trade.takeProfit != nil {
                                 rmulGaugeSection
-                                HStack(alignment: .top, spacing: 16) {
+                                innerLayout {
                                     targetsSection
                                     riskImpactCard
                                 }
@@ -692,7 +704,9 @@ struct FullScreenImageView: View {
                 }
             }
         }
+        #if os(macOS)
         .frame(minWidth: 940, minHeight: 640)
+        #endif
         .onMouseBackButton()
     }
 }
