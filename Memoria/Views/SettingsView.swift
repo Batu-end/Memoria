@@ -156,7 +156,12 @@ struct SettingsView: View {
 
                 Section {
                     Toggle(isOn: $mathEngineInspectorEnabled) {
-                        Label("Math Engine Inspector", systemImage: "function")
+                        Label {
+                            Text("Math Engine Inspector")
+                        } icon: {
+                            Image(systemName: "function")
+                                .foregroundStyle(.white)
+                        }
                     }
                 } header: {
                     Text("Developer Tools")
@@ -170,7 +175,12 @@ struct SettingsView: View {
                         showingResetAlert = true
                     } label: {
                         HStack {
-                            Label("Erase All Data", systemImage: "trash")
+                            Label {
+                                Text("Erase All Data")
+                            } icon: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(.white)
+                            }
                             Spacer()
                         }
                     }
