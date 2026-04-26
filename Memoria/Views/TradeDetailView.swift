@@ -464,6 +464,7 @@ struct TradeDetailView: View {
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.05), lineWidth: 0.5))
+        .sensoryFeedback(.impact(weight: .light), trigger: trade.rulesFollowed.count)
     }
 
     // MARK: - Attachment + Notes

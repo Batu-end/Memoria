@@ -166,35 +166,66 @@ struct TradesListView: View {
     }
     
     private var tradesList: some View {
-        LazyVStack(spacing: 8) {
-            ForEach(filteredTrades) { trade in
-                NavigationLink(destination: TradeDetailView(trade: trade)) {
-                    TradeRowView(trade: trade)
-                }
-                .buttonStyle(.plain)
-                .contextMenu {
-                    if trade.status == .open {
-                        Button {
-                            tradeToClose = trade
-                        } label: {
-                            Label("Close Position", systemImage: "checkmark.circle.fill")
-                        }
-                        Button {
-                            tradeToScale = trade
-                        } label: {
-                            Label("Scale Position", systemImage: "slider.horizontal.3")
-                        }
+        Group {
+            #if os(iOS)
+            List {
+                ForEach(filteredTrades) { trade in
+                    NavigationLink(destination: TradeDetailView(trade: trade)) {
+                        TradeRowView(trade: trade)
                     }
-                    
-                    Button(role: .destructive) {
-                        tradeToDelete = trade
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            tradeToDelete = trade
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        if trade.status == .open {
+                            Button {
+                                tradeToClose = trade
+                            } label: {
+                                Label("Close", systemImage: "checkmark.circle.fill")
+                            }
+                            .tint(.blue)
+                        }
                     }
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            #else
+            LazyVStack(spacing: 8) {
+                ForEach(filteredTrades) { trade in
+                    NavigationLink(destination: TradeDetailView(trade: trade)) {
+                        TradeRowView(trade: trade)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        if trade.status == .open {
+                            Button {
+                                tradeToClose = trade
+                            } label: {
+                                Label("Close Position", systemImage: "checkmark.circle.fill")
+                            }
+                            Button {
+                                tradeToScale = trade
+                            } label: {
+                                Label("Scale Position", systemImage: "slider.horizontal.3")
+                            }
+                        }
+                        Button(role: .destructive) {
+                            tradeToDelete = trade
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            #endif
         }
-        .padding(.horizontal)
     }
     
     private var emptyState: some View {
