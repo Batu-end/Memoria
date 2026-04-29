@@ -16,6 +16,8 @@ final class AccountSnapshot {
     var cashBalance: Double
     var unrealizedPL: Double
     
+    var portfolio: Portfolio?
+
     init(totalEquity: Double, cashBalance: Double = 0.0, unrealizedPL: Double = 0.0, date: Date = Date()) {
         self.id = UUID()
         self.date = date

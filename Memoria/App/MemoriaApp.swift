@@ -12,6 +12,7 @@ import SwiftData
 struct MemoriaApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
+            Portfolio.self,
             Trade.self,
             Execution.self,
             AccountSnapshot.self,
