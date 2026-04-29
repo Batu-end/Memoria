@@ -23,6 +23,8 @@ final class Trade {
     
     @Relationship(deleteRule: .cascade, inverse: \Execution.trade)
     var executions: [Execution] = []
+
+    var portfolio: Portfolio?
     
     init(ticker: String, status: TradeStatus = .open, side: TradeSide = .long, assetType: AssetType = .stock) {
         self.id = UUID()

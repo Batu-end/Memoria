@@ -25,6 +25,8 @@ final class WatchlistItem {
     var marketCap: Double?
     var lastUpdated: Date?
     
+    var portfolio: Portfolio?
+
     init(ticker: String, priceAtAdd: Double? = nil, notes: String? = nil) {
         self.id = UUID()
         self.ticker = ticker.uppercased()
