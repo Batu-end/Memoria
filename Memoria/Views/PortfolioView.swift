@@ -9,11 +9,19 @@ import SwiftUI
 import SwiftData
 
 struct PortfolioView: View {
-    @Environment(\.modelContext) private var modelContext
-    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 0.0
+    let portfolio: Portfolio
 
-    @Query(filter: #Predicate<Trade> { $0.statusRaw == "Open" }, sort: \Trade.dateAdded, order: .reverse)
-    private var openTrades: [Trade]
+    @Environment(\.modelContext) private var modelContext
+    @Query private var openTrades: [Trade]
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _openTrades = Query(
+            filter: #Predicate<Trade> { $0.portfolio?.id == id && $0.statusRaw == "Open" },
+            sort: \Trade.dateAdded, order: .reverse
+        )
+    }
 
     @State private var liveQuotes: [String: StockQuote] = [:]
     @State private var accountingEngine = AccountingEngine.shared
@@ -267,6 +275,7 @@ struct PositionRowView: View {
 }
 
 #Preview {
-    PortfolioView()
+    let portfolio = Portfolio(name: "Main")
+    PortfolioView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }

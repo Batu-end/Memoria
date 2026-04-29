@@ -8,6 +8,8 @@ import SwiftUI
 import SwiftData
 
 struct AddWatchlistItemView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
@@ -81,11 +83,12 @@ struct AddWatchlistItemView: View {
     
     private func addItem() {
         let item = WatchlistItem(ticker: ticker.uppercased())
-        
+        item.portfolio = portfolio
+
         if let looked = lookedUpPrice {
             item.priceAtAdd = looked
         }
-        
+
         modelContext.insert(item)
         AnalyticsService.shared.log(.watchlistItemAdded, details: "Ticker: \(ticker)", context: modelContext)
         dismiss()
@@ -107,6 +110,7 @@ struct AddWatchlistItemView: View {
 }
 
 #Preview {
-    AddWatchlistItemView()
+    let portfolio = Portfolio(name: "Main")
+    AddWatchlistItemView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }
