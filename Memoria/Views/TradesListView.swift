@@ -9,8 +9,16 @@ import SwiftUI
 import SwiftData
 
 struct TradesListView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Trade.dateAdded, order: .reverse) private var allTrades: [Trade]
+    @Query private var allTrades: [Trade]
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _allTrades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id }, sort: \Trade.dateAdded, order: .reverse)
+    }
     
     var accountingEngine = AccountingEngine.shared
     
@@ -126,7 +134,7 @@ struct TradesListView: View {
                 }
             }
             .sheet(isPresented: $showAddTrade) {
-                AddTradeView()
+                AddTradeView(portfolio: portfolio)
             }
             .sheet(item: $tradeToClose) { trade in
                 CloseTradeSheet(trade: trade, marketPrice: accountingEngine.currentPrice(for: trade.ticker))
@@ -274,6 +282,7 @@ struct StatPill: View {
 }
 
 #Preview {
-    TradesListView()
+    let portfolio = Portfolio(name: "Main")
+    TradesListView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }

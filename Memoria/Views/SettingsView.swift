@@ -10,13 +10,22 @@ import SwiftData
 import Combine
 
 struct SettingsView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
     @Query private var trades: [Trade]
     @Query private var watchlistItems: [WatchlistItem]
     @Query private var accountSnapshots: [AccountSnapshot]
     @Query private var activityLogs: [ActivityLog]
-    
-    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 0.0
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _trades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id })
+        _watchlistItems = Query(filter: #Predicate<WatchlistItem> { $0.portfolio?.id == id })
+        _accountSnapshots = Query(filter: #Predicate<AccountSnapshot> { $0.portfolio?.id == id })
+    }
+
     @AppStorage("traderName", store: .app) private var traderName: String = ""
     @AppStorage("traderPersonality", store: .app) private var personalityRaw: String = TraderPersonality.human.rawValue
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
@@ -87,13 +96,13 @@ struct SettingsView: View {
                             
                             // Net Deposits (In vs Out)
                             VStack(spacing: 4) {
-                                Text(startingBalance >= 0 ? "NET CONTRIBUTION" : "HOUSE MONEY")
+                                Text(portfolio.startingBalance >= 0 ? "NET CONTRIBUTION" : "HOUSE MONEY")
                                     .font(.system(size: 9, weight: .bold))
                                     .foregroundStyle(.secondary)
-                                
-                                Text(abs(startingBalance), format: .currency(code: "USD"))
+
+                                Text(abs(portfolio.startingBalance), format: .currency(code: "USD"))
                                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                                    .foregroundStyle(startingBalance >= 0 ? Color.primary : Color.orange)
+                                    .foregroundStyle(portfolio.startingBalance >= 0 ? Color.primary : Color.orange)
                             }
                             .frame(maxWidth: .infinity)
                         }
@@ -249,9 +258,9 @@ struct SettingsView: View {
                 .sheet(item: $capitalAction) { action in
                     CapitalAdjustmentSheet(isDepositing: action == .deposit, currentBalance: currentBalance) { amount in
                         if action == .deposit {
-                            startingBalance += amount
+                            portfolio.startingBalance += amount
                         } else {
-                            startingBalance -= amount
+                            portfolio.startingBalance -= amount
                         }
                     }
                 }
@@ -286,10 +295,8 @@ struct SettingsView: View {
     }
     
     private var currentBalance: Double {
-        let totalPnl = trades.filter { $0.status == .closed }.compactMap { trade -> Double? in
-            trade.math?.totalPnl
-        }.reduce(0, +)
-        return startingBalance + totalPnl + totalFloatingPnl
+        let totalPnl = trades.filter { $0.status == .closed }.compactMap { $0.math?.totalPnl }.reduce(0, +)
+        return portfolio.startingBalance + totalPnl + totalFloatingPnl
     }
     
     private func fetchLiveQuotes() async {
@@ -307,7 +314,7 @@ struct SettingsView: View {
         for log in activityLogs { modelContext.delete(log) }
         try? modelContext.save()
 
-        startingBalance = 0.0
+        portfolio.startingBalance = 0.0
         traderName = ""
         personalityRaw = TraderPersonality.human.rawValue
         unreadableDate = false
@@ -426,6 +433,7 @@ struct CapitalAdjustmentSheet: View {
 }
 
 #Preview {
-    SettingsView()
+    let portfolio = Portfolio(name: "Main")
+    SettingsView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }

@@ -31,17 +31,26 @@ enum BenchmarkTimeframe: String, CaseIterable {
 }
 
 struct DashboardView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 0.0
     @AppStorage("traderName", store: .app) private var traderName: String = ""
     @AppStorage("traderPersonality", store: .app) private var personalityRaw: String = TraderPersonality.human.rawValue
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
     @AppStorage("unreadableDate", store: .app) private var unreadableDate: Bool = false
-    
-    // Live Data Source
-    @Query(sort: \Trade.dateAdded, order: .reverse) private var trades: [Trade]
+
+    // Live Data Source — scoped to active portfolio
+    @Query private var trades: [Trade]
     @Query private var watchlistItems: [WatchlistItem]
-    @Query(filter: #Predicate<Trade> { $0.statusRaw == "Open" }) private var openTrades: [Trade]
+    @Query private var openTrades: [Trade]
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _trades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id }, sort: \Trade.dateAdded, order: .reverse)
+        _watchlistItems = Query(filter: #Predicate<WatchlistItem> { $0.portfolio?.id == id })
+        _openTrades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id && $0.statusRaw == "Open" })
+    }
     
     // Live State
     @State private var liveQuotes: [String: StockQuote] = [:]
@@ -93,13 +102,13 @@ struct DashboardView: View {
             updateTask = Task {
                 try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
                 guard !Task.isCancelled else { return }
-                accountingEngine.update(trades: newValue, startingBalance: startingBalance)
+                accountingEngine.update(trades: newValue, startingBalance: portfolio.startingBalance)
             }
         }
         .onChange(of: liveQuotes) { _, newValue in
             accountingEngine.update(quotes: newValue)
         }
-        .onChange(of: startingBalance) { _, newValue in
+        .onChange(of: portfolio.startingBalance) { _, newValue in
             accountingEngine.update(trades: trades, startingBalance: newValue)
         }
         .onChange(of: benchmarkTimeframe) { _, _ in
@@ -555,7 +564,7 @@ struct DashboardView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "building.columns.fill")
                         if let sr = spyReturn {
-                            let spyProfit = (sr / 100.0) * startingBalance
+                            let spyProfit = (sr / 100.0) * portfolio.startingBalance
                             Text("SPY \(spyProfit >= 0 ? "+" : "")\(spyProfit, format: .currency(code: "USD"))")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(spyProfit >= 0 ? Color.green : Color.red)
@@ -591,7 +600,7 @@ struct DashboardView: View {
                         
                         if let firstSpy = spyHistoricalData.first?.close, firstSpy > 0 {
                             ForEach(spyHistoricalData) { point in
-                                let spyProfit = ((point.close - firstSpy) / firstSpy) * startingBalance
+                                let spyProfit = ((point.close - firstSpy) / firstSpy) * portfolio.startingBalance
                                 LineMark(
                                     x: .value("Time", point.date),
                                     y: .value("Profit", spyProfit),
@@ -712,7 +721,7 @@ struct DashboardView: View {
     
     private func initializeDashboard() async {
         // Reduced logic: Just sync the engine once on startup
-        accountingEngine.update(trades: trades, startingBalance: startingBalance)
+        accountingEngine.update(trades: trades, startingBalance: portfolio.startingBalance)
         
         await fetchLiveQuotes()
         await fetchSpyData()
@@ -827,7 +836,7 @@ struct DashboardView: View {
     private var relativeYDomain: ClosedRange<Double> {
         let curve = accountingEngine.calculateRelativeCurve(from: benchmarkStartDate).map { $0.balance }
         let firstSpy = spyHistoricalData.first?.close ?? 1.0
-        let spyProfits = spyHistoricalData.map { (($0.close - firstSpy) / firstSpy) * startingBalance }
+        let spyProfits = spyHistoricalData.map { (($0.close - firstSpy) / firstSpy) * portfolio.startingBalance }
         
         let allValues = curve + spyProfits
         guard !allValues.isEmpty else { return -100...100 }
@@ -838,6 +847,7 @@ struct DashboardView: View {
 }
 
 #Preview {
-    DashboardView()
+    let portfolio = Portfolio(name: "Main")
+    DashboardView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }
