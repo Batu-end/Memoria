@@ -40,7 +40,40 @@ struct MemoriaApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(.dark)
+                .task { bootstrapPortfolios() }
         }
         .modelContainer(sharedModelContainer)
+    }
+
+    // MARK: - Bootstrap
+
+    @MainActor
+    private func bootstrapPortfolios() {
+        let context = ModelContext(sharedModelContainer)
+
+        let existing = (try? context.fetch(FetchDescriptor<Portfolio>())) ?? []
+        guard existing.isEmpty else { return }
+
+        // Carry forward the legacy per-app starting balance into the first portfolio
+        let legacyBalance = UserDefaults.app.double(forKey: "startingBalance")
+        let main = Portfolio(name: "Main", startingBalance: legacyBalance, sortOrder: 0)
+        context.insert(main)
+
+        // Assign orphan trades — both directions for SwiftData relationship safety
+        let orphanTrades = (try? context.fetch(FetchDescriptor<Trade>())) ?? []
+        for trade in orphanTrades { trade.portfolio = main }
+        main.trades.append(contentsOf: orphanTrades)
+
+        // Assign orphan watchlist items
+        let orphanWatchlist = (try? context.fetch(FetchDescriptor<WatchlistItem>())) ?? []
+        for item in orphanWatchlist { item.portfolio = main }
+        main.watchlistItems.append(contentsOf: orphanWatchlist)
+
+        // Assign orphan snapshots
+        let orphanSnapshots = (try? context.fetch(FetchDescriptor<AccountSnapshot>())) ?? []
+        for snapshot in orphanSnapshots { snapshot.portfolio = main }
+        main.snapshots.append(contentsOf: orphanSnapshots)
+
+        try? context.save()
     }
 }
