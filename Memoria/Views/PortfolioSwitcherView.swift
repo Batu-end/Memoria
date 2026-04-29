@@ -116,7 +116,7 @@ struct PortfolioSwitcherView: View {
                 Button("Cancel", role: .cancel) { portfolioToDelete = nil }
             } message: {
                 if let p = portfolioToDelete {
-                    Text(""\(p.name)" and all its trades will be permanently deleted.")
+                    Text("\"\(p.name)\" and all its trades will be permanently deleted.")
                 }
             }
         }
