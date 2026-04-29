@@ -64,6 +64,7 @@ struct DashboardView: View {
     
     @State private var marketStatus: MarketStatus = MarketService.shared.currentStatus()
     @State private var isDashboardReady = false
+    @State private var showPortfolioSwitcher = false
     
     // The Math engine
     @State private var accountingEngine = AccountingEngine.shared
@@ -113,6 +114,9 @@ struct DashboardView: View {
         }
         .onChange(of: benchmarkTimeframe) { _, _ in
             Task { await fetchSpyData() }
+        }
+        .sheet(isPresented: $showPortfolioSwitcher) {
+            PortfolioSwitcherView()
         }
     }
     
@@ -673,7 +677,7 @@ struct DashboardView: View {
         let month = Date().formatted(.dateTime.month(.wide))
         let year = Date().formatted(.dateTime.year())
         return HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("\(timeOfDayLabel),")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.cyan)
@@ -685,6 +689,27 @@ struct DashboardView: View {
                     .foregroundStyle(personality.nameColor)
                     .italic(personality.isItalic)
                     .padding(.leading, 2)
+
+                Button {
+                    showPortfolioSwitcher = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "briefcase.fill")
+                            .font(.system(size: 9))
+                        Text(portfolio.name)
+                            .font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 2)
             }
 
             Spacer()
