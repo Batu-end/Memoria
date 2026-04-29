@@ -287,14 +287,6 @@ struct DashboardView: View {
                 }
             }
 
-            // Stop distance
-            if let vwap = math?.vwap, let sl = trade.stopLoss, vwap > 0 {
-                let dist = ((sl - vwap) / vwap) * 100 * (trade.side == .short ? -1 : 1)
-                Text("SL \(dist >= 0 ? "+" : "")\(dist, specifier: "%.1f")%")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(dist < -5 ? Color.red : Color.secondary)
-            }
-
             // Unrealized P&L
             Text(unrealized >= 0 ? "+\(unrealized, specifier: "%.2f")" : "\(unrealized, specifier: "%.2f")")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
