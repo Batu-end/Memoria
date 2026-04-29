@@ -48,22 +48,23 @@ struct SettingsView: View {
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.plain)
                             .foregroundStyle(.blue)
+                            .submitLabel(.done)
                     }
 
-                    HStack {
-                        Label("I am a...", systemImage: "theatermasks.fill")
-                        Spacer()
-                        Picker("", selection: Binding(
-                            get: { personality },
-                            set: { personalityRaw = $0.rawValue }
-                        )) {
-                            ForEach(TraderPersonality.allCases, id: \.self) { p in
-                                Text("\(p.emoji) \(p.rawValue)").tag(p)
-                            }
+                    Picker(selection: Binding(
+                        get: { personality },
+                        set: { personalityRaw = $0.rawValue }
+                    )) {
+                        ForEach(TraderPersonality.allCases, id: \.self) { p in
+                            Text("\(p.emoji) \(p.rawValue)")
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .tag(p)
                         }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
+                    } label: {
+                        Label("I am a...", systemImage: "theatermasks.fill")
                     }
+                    .pickerStyle(.menu)
                 } header: {
                     Text("Profile")
                 }
@@ -133,6 +134,7 @@ struct SettingsView: View {
                 
                 Section {
                     Toggle(isOn: $unreadableDate) {
+                        #if os(macOS)
                         VStack(alignment: .leading, spacing: 2) {
                             Label("Nearly unreadable date", systemImage: "character.cursor.ibeam")
                             Text("Calligraphic font on the date header. Looks cool, barely readable.")
@@ -140,8 +142,28 @@ struct SettingsView: View {
                                 .foregroundStyle(.tertiary)
                                 .padding(.leading, 28)
                         }
+                        #else
+                        HStack(spacing: 14) {
+                            Image(systemName: "character.cursor.ibeam")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Nearly unreadable date")
+                                    .font(.system(size: 16))
+                                Text("Calligraphic font on the date header.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        #endif
                     }
+                    .padding(.vertical, 4)
+                    
                     Toggle(isOn: $monochromeLogos) {
+                        #if os(macOS)
                         VStack(alignment: .leading, spacing: 2) {
                             Label("Monochrome logos", systemImage: "circle.lefthalf.filled")
                             Text("Strips color from all ticker logos.")
@@ -149,14 +171,37 @@ struct SettingsView: View {
                                 .foregroundStyle(.tertiary)
                                 .padding(.leading, 28)
                         }
+                        #else
+                        HStack(spacing: 14) {
+                            Image(systemName: "circle.lefthalf.filled")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Monochrome logos")
+                                    .font(.system(size: 16))
+                                Text("Strips color from all ticker logos.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        #endif
                     }
+                    .padding(.vertical, 4)
                 } header: {
                     Text("Appearance")
                 }
 
                 Section {
                     Toggle(isOn: $mathEngineInspectorEnabled) {
-                        Label("Math Engine Inspector", systemImage: "function")
+                        Label {
+                            Text("Math Engine Inspector")
+                        } icon: {
+                            Image(systemName: "function")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 } header: {
                     Text("Developer Tools")
@@ -170,7 +215,12 @@ struct SettingsView: View {
                         showingResetAlert = true
                     } label: {
                         HStack {
-                            Label("Erase All Data", systemImage: "trash")
+                            Label {
+                                Text("Erase All Data")
+                            } icon: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(.white)
+                            }
                             Spacer()
                         }
                     }
@@ -183,11 +233,13 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.immediately)
                 .background(
                     LinearGradient(colors: [Color(red: 0.05, green: 0.05, blue: 0.06), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                         .ignoresSafeArea()
                 )
                 .navigationTitle("Settings")
+                .darkNavigationBar()
                 .task {
                     await fetchLiveQuotes()
                 }
@@ -366,7 +418,9 @@ struct CapitalAdjustmentSheet: View {
                 isFocused = true
             }
         }
+        #if os(macOS)
         .frame(width: 400, height: 450)
+        #endif
         .onMouseBackButton()
     }
 }

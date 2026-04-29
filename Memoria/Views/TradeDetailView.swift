@@ -5,6 +5,7 @@
 import SwiftUI
 import SwiftData
 import Combine
+import PhotosUI
 
 struct TradeDetailView: View {
     @Environment(\.modelContext) private var modelContext
@@ -18,12 +19,25 @@ struct TradeDetailView: View {
     var math: TradeAccounting? { engine.tradeAccounting[trade.id] }
 
     @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var outerLayout: AnyLayout {
+        horizontalSizeClass == .regular
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: 20))
+            : AnyLayout(VStackLayout(spacing: 20))
+    }
+    private var innerLayout: AnyLayout {
+        horizontalSizeClass == .regular
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: 16))
+            : AnyLayout(VStackLayout(spacing: 16))
+    }
 
     @Namespace private var zoomNamespace
     @State private var showManageSheet = false
     @State private var showEnlargeSheet = false
     @State private var resetTrigger = false
     @State private var livePrice: Double?
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     private let refreshTimer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
 
@@ -33,13 +47,13 @@ struct TradeDetailView: View {
                 VStack(spacing: 20) {
                     headerSection
 
-                    HStack(alignment: .top, spacing: 20) {
+                    outerLayout {
                         VStack(spacing: 16) {
                             detailsAndPnLSection
 
                             if trade.stopLoss != nil || trade.takeProfit != nil {
                                 rmulGaugeSection
-                                HStack(alignment: .top, spacing: 16) {
+                                innerLayout {
                                     targetsSection
                                     riskImpactCard
                                 }
@@ -75,6 +89,7 @@ struct TradeDetailView: View {
         .onAppear { if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .onReceive(refreshTimer) { _ in if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .navigationTitle(trade.ticker)
+        .darkNavigationBar()
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if trade.status == .open {
@@ -86,11 +101,24 @@ struct TradeDetailView: View {
             }
         }
         .sheet(isPresented: $showManageSheet) { ScalePositionSheet(trade: trade, livePrice: livePrice) }
+        .onChange(of: selectedPhotoItem) { _, item in
+            Task {
+                if let data = try? await item?.loadTransferable(type: Data.self) {
+                    if let newId = LocalAttachmentService.shared.saveImage(from: data) {
+                        if let old = trade.attachmentId { LocalAttachmentService.shared.deleteImage(id: old) }
+                        trade.attachmentId = newId
+                    }
+                }
+                selectedPhotoItem = nil
+            }
+        }
+        #if os(macOS)
         .onExitCommand {
             if showEnlargeSheet {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = false }
             }
         }
+        #endif
     }
 
     private var imageOverlay: some View {
@@ -437,6 +465,7 @@ struct TradeDetailView: View {
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.05), lineWidth: 0.5))
+        .sensoryFeedback(.impact(weight: .light), trigger: trade.rulesFollowed.count)
     }
 
     // MARK: - Attachment + Notes
@@ -466,6 +495,7 @@ struct TradeDetailView: View {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
                         }
                     }
+                    #if os(macOS)
                     .dropDestination(for: Data.self) { items, _ in
                         guard let imageData = items.first else { return false }
                         if let newId = LocalAttachmentService.shared.saveImage(from: imageData) {
@@ -484,6 +514,16 @@ struct TradeDetailView: View {
                         }
                         return false
                     }
+                    #else
+                    .overlay {
+                        if trade.attachmentId == nil {
+                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                                Color.clear
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    #endif
 
                 if trade.attachmentId != nil {
                     Button(action: {
@@ -497,6 +537,21 @@ struct TradeDetailView: View {
                     .buttonStyle(.plain)
                     .padding(10)
                 }
+
+                #if os(iOS)
+                if trade.attachmentId != nil {
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(7)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                #endif
             }
             .frame(maxWidth: .infinity)
 
@@ -690,7 +745,9 @@ struct FullScreenImageView: View {
                 }
             }
         }
+        #if os(macOS)
         .frame(minWidth: 940, minHeight: 640)
+        #endif
         .onMouseBackButton()
     }
 }

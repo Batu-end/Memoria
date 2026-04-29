@@ -17,6 +17,9 @@ struct WatchlistView: View {
     @State private var isRefreshing = false
     @State private var lastRefreshTime: Date?
     @State private var sparklines: [String: [Double]] = [:]
+    
+    @State private var showiOSAlert = false
+    @State private var iosTickerInput = ""
 
     private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -54,6 +57,13 @@ struct WatchlistView: View {
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        deleteItem(item)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                         }
                         .onMove(perform: moveItems)
                     }
@@ -62,25 +72,64 @@ struct WatchlistView: View {
                 }
             }
             .navigationTitle("Watchlist")
+            .darkNavigationBar()
             .toolbar {
-                ToolbarItem(placement: .navigation) {
+                #if os(iOS)
+                ToolbarItem(placement: .topBarLeading) {
                     if let lastRefresh = lastRefreshTime {
-                        Button(action: {}) {
+                        Button {
+                            Task { await refreshQuotes() }
+                        } label: {
                             HStack(spacing: 4) {
                                 if isRefreshing {
                                     ProgressView().scaleEffect(0.6).frame(width: 10, height: 10)
                                 }
-                                Text(isRefreshing ? "Refreshing…" : "Updated \(lastRefresh, format: .dateTime.hour().minute())")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.tertiary)
+                                Text(isRefreshing ? "Refreshing" : lastRefresh.formatted(.dateTime.hour().minute()))
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.secondary)
                             }
-                            .padding(.horizontal, 6)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(.white.opacity(0.1), in: Capsule())
+                            .fixedSize()
                         }
                         .buttonStyle(.plain)
+                        .disabled(isRefreshing)
                     }
                 }
+                #else
+                ToolbarItem(placement: .navigation) {
+                    if let lastRefresh = lastRefreshTime {
+                        Button {
+                            Task { await refreshQuotes() }
+                        } label: {
+                            HStack(spacing: 4) {
+                                if isRefreshing {
+                                    ProgressView().scaleEffect(0.6).frame(width: 10, height: 10)
+                                }
+                                Text(isRefreshing ? "Refreshing" : lastRefresh.formatted(.dateTime.hour().minute()))
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(.white.opacity(0.1), in: Capsule())
+                            .fixedSize()
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isRefreshing)
+                    }
+                }
+                #endif
+                
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showAddItem = true }) {
+                    Button(action: {
+                        #if os(iOS)
+                        showiOSAlert = true
+                        #else
+                        showAddItem = true
+                        #endif
+                    }) {
                         Label("Add Symbol", systemImage: "plus")
                     }
                     .labelStyle(.titleAndIcon)
@@ -92,6 +141,35 @@ struct WatchlistView: View {
                     .onDisappear {
                         Task { await refreshQuotes() }
                     }
+            }
+            .alert("Add Watchlist Symbol", isPresented: $showiOSAlert) {
+                TextField("Ticker (e.g. AAPL)", text: $iosTickerInput)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    #endif
+                
+                Button("Cancel", role: .cancel) {
+                    iosTickerInput = ""
+                }
+                
+                Button("Add") {
+                    let symbol = iosTickerInput.trimmingCharacters(in: .whitespaces).uppercased()
+                    if !symbol.isEmpty {
+                        let item = WatchlistItem(ticker: symbol)
+                        modelContext.insert(item)
+                        try? modelContext.save()
+                        AnalyticsService.shared.log(.watchlistItemAdded, details: "Ticker: \(symbol)", context: modelContext)
+                        iosTickerInput = ""
+                        Task {
+                            // Give SwiftData 200ms to inject the new item into the @Query array before fetching
+                            try? await Task.sleep(nanoseconds: 200_000_000)
+                            await refreshQuotes()
+                        }
+                    }
+                }
+            } message: {
+                Text("Enter the stock ticker symbol you want to track.")
             }
             .task {
                 await refreshQuotes()
