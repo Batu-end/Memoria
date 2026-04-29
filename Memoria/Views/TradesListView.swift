@@ -46,22 +46,64 @@ struct TradesListView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background
-                // Background
                 LinearGradient(colors: [Color(red: 0.05, green: 0.05, blue: 0.06), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
-                
+
+                #if os(iOS)
+                List {
+                    filterBar
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
+                    if selectedFilter != "Open" && !closedTrades.isEmpty {
+                        statsHeader
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+
+                    if filteredTrades.isEmpty {
+                        emptyState
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    } else {
+                        ForEach(filteredTrades) { trade in
+                            NavigationLink(destination: TradeDetailView(trade: trade)) {
+                                TradeRowView(trade: trade)
+                            }
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    tradeToDelete = trade
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                if trade.status == .open {
+                                    Button {
+                                        tradeToClose = trade
+                                    } label: {
+                                        Label("Close", systemImage: "checkmark.circle.fill")
+                                    }
+                                    .tint(.blue)
+                                }
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                #else
                 ScrollView {
                     VStack(spacing: 16) {
-                        // Filter Segmented Control
                         filterBar
-                        
-                        // Stats Header (shown when viewing Closed or All)
+
                         if selectedFilter != "Open" && !closedTrades.isEmpty {
                             statsHeader
                         }
-                        
-                        // Trade List
+
                         if filteredTrades.isEmpty {
                             emptyState
                         } else {
@@ -70,8 +112,10 @@ struct TradesListView: View {
                     }
                     .padding(.top, 8)
                 }
+                #endif
             }
             .navigationTitle("Trades")
+            .darkNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddTrade = true }) {
@@ -185,7 +229,6 @@ struct TradesListView: View {
                             Label("Scale Position", systemImage: "slider.horizontal.3")
                         }
                     }
-                    
                     Button(role: .destructive) {
                         tradeToDelete = trade
                     } label: {

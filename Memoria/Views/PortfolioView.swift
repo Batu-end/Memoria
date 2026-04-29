@@ -10,7 +10,7 @@ import SwiftData
 
 struct PortfolioView: View {
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 1600.0
+    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 0.0
 
     @Query(filter: #Predicate<Trade> { $0.statusRaw == "Open" }, sort: \Trade.dateAdded, order: .reverse)
     private var openTrades: [Trade]
@@ -38,6 +38,7 @@ struct PortfolioView: View {
                 .ignoresSafeArea()
             )
             .navigationTitle("Open Positions")
+            .darkNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .automatic) {
                     Button {

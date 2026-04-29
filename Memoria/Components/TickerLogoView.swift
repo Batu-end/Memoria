@@ -37,6 +37,8 @@ struct TickerLogoView: View {
                     .resizable()
                     .scaledToFit()
                     .grayscale(monochromeLogos ? 1.0 : 0.0)
+                    .contrast(monochromeLogos ? 1.5 : 1.0)
+                    .brightness(monochromeLogos ? 0.2 : 0.0)
                     .frame(width: size, height: size)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
