@@ -59,16 +59,16 @@ struct PortfolioSwitcherView: View {
             .navigationTitle("Portfolios")
             .darkNavigationBar()
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button {
                         newName = ""
                         showNewAlert = true
                     } label: {
                         Label("New Portfolio", systemImage: "plus")
                     }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
                 }
             }
             .alert("New Portfolio", isPresented: $showNewAlert) {
