@@ -100,8 +100,8 @@ struct AnalyticsView: View {
                             
                             // Top Row: Global Edge Insights
                             HStack(spacing: 16) {
-                                EdgeMetricCard(title: "Long Strike", value: String(format: "%.0f%%", longWinRate), icon: "arrow.up.right", color: .blue)
-                                EdgeMetricCard(title: "Short Strike", value: String(format: "%.0f%%", shortWinRate), icon: "arrow.down.right", color: .orange)
+                                EdgeMetricCard(title: "Long Win Rate", value: String(format: "%.0f%%", longWinRate), icon: "arrow.up.right", color: .blue)
+                                EdgeMetricCard(title: "Short Win Rate", value: String(format: "%.0f%%", shortWinRate), icon: "arrow.down.right", color: .orange)
                             }
                             .padding(.horizontal)
                             
