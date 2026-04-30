@@ -33,6 +33,7 @@ struct SettingsView: View {
     @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
     @AppStorage("unreadableDate", store: .app) private var unreadableDate: Bool = false
     @AppStorage("monochromeLogos", store: .app) private var monochromeLogos: Bool = false
+    @AppStorage("stealthMode", store: .app) private var stealthMode: Bool = false
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
@@ -89,6 +90,7 @@ struct SettingsView: View {
                                 
                                 Text(currentBalance, format: .currency(code: "USD"))
                                     .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .stealthable()
                             }
                             .frame(maxWidth: .infinity)
                             
@@ -103,6 +105,7 @@ struct SettingsView: View {
                                 Text(abs(portfolio.startingBalance), format: .currency(code: "USD"))
                                     .font(.system(size: 24, weight: .bold, design: .rounded))
                                     .foregroundStyle(portfolio.startingBalance >= 0 ? Color.primary : Color.orange)
+                                    .stealthable()
                             }
                             .frame(maxWidth: .infinity)
                         }
@@ -186,11 +189,40 @@ struct SettingsView: View {
                                 .font(.system(size: 20))
                                 .foregroundStyle(.secondary)
                                 .frame(width: 30)
-                            
+
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Monochrome logos")
                                     .font(.system(size: 16))
                                 Text("Strips color from all ticker logos.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        #endif
+                    }
+                    .padding(.vertical, 4)
+
+                    Toggle(isOn: $stealthMode) {
+                        #if os(macOS)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Stealth Mode", systemImage: "eye.slash")
+                            Text("Hides absolute dollar values across the app.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 28)
+                        }
+                        #else
+                        HStack(spacing: 14) {
+                            Image(systemName: "eye.slash")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Stealth Mode")
+                                    .font(.system(size: 16))
+                                Text("Hides absolute dollar values across the app.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)

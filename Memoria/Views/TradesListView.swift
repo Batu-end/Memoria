@@ -192,6 +192,7 @@ struct TradesListView: View {
                 Text(accountingEngine.portfolioState.totalPnl >= 0 ? "+\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")" : "\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
+                    .stealthable()
             }
 
             Spacer()

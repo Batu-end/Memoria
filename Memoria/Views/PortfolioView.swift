@@ -75,31 +75,35 @@ struct PortfolioView: View {
                     value: totalUnrealized >= 0
                         ? "+\(totalUnrealized.formatted(.currency(code: "USD")))"
                         : totalUnrealized.formatted(.currency(code: "USD")),
-                    color: totalUnrealized >= 0 ? .green : .red
+                    color: totalUnrealized >= 0 ? .green : .red,
+                    hideable: true
                 )
                 headerCard(
                     title: "TOTAL EXPOSURE",
                     value: totalExposure.formatted(.currency(code: "USD")),
-                    color: .blue
+                    color: .blue,
+                    hideable: true
                 )
             }
             HStack(spacing: 12) {
                 headerCard(
                     title: "NET LIQUIDITY",
                     value: netLiquidity.formatted(.currency(code: "USD")),
-                    color: .white
+                    color: .white,
+                    hideable: true
                 )
                 headerCard(
                     title: "OPEN POSITIONS",
                     value: "\(openTrades.count)",
-                    color: .purple
+                    color: .purple,
+                    hideable: false
                 )
             }
         }
         .padding(.horizontal)
     }
 
-    private func headerCard(title: String, value: String, color: Color) -> some View {
+    private func headerCard(title: String, value: String, color: Color, hideable: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.system(size: 9, weight: .bold))
@@ -110,6 +114,7 @@ struct PortfolioView: View {
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .stealthable(hideable)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
@@ -208,10 +213,12 @@ struct PositionRowView: View {
                          : unrealizedPnl.formatted(.currency(code: "USD")))
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(unrealizedPnl >= 0 ? .green : .red)
+                        .stealthable()
                     if let price = livePrice {
                         Text(price.formatted(.currency(code: "USD")))
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .stealthable()
                     }
                 }
             }
@@ -220,19 +227,21 @@ struct PositionRowView: View {
             Divider().opacity(0.2)
 
             HStack(spacing: 0) {
-                metricCell(label: "ENTRY", value: entry.map { $0.formatted(.currency(code: "USD")) } ?? "—")
-                metricCell(label: "SIZE", value: positionSize > 0 ? positionSize.formatted(.currency(code: "USD")) : "—")
+                metricCell(label: "ENTRY", value: entry.map { $0.formatted(.currency(code: "USD")) } ?? "—", hideable: true)
+                metricCell(label: "SIZE", value: positionSize > 0 ? positionSize.formatted(.currency(code: "USD")) : "—", hideable: true)
                 metricCell(
                     label: "EXPOSURE",
                     value: exposurePct > 0 ? String(format: "%.1f%%", exposurePct) : "—",
-                    valueColor: exposurePct > 30 ? .orange : .white
+                    valueColor: exposurePct > 30 ? .orange : .white,
+                    hideable: false
                 )
                 metricCell(
                     label: "STOP DIST",
                     value: stopDistance.map { String(format: "%+.1f%%", $0) } ?? "—",
-                    valueColor: (stopDistance ?? 0) < -5 ? .red : .secondary
+                    valueColor: (stopDistance ?? 0) < -5 ? .red : .secondary,
+                    hideable: false
                 )
-                metricCell(label: "DAYS", value: "\(daysHeld)d")
+                metricCell(label: "DAYS", value: "\(daysHeld)d", hideable: false)
             }
             .padding(.top, 10)
         }
@@ -258,7 +267,7 @@ struct PositionRowView: View {
             .clipShape(Capsule())
     }
 
-    private func metricCell(label: String, value: String, valueColor: Color = .white) -> some View {
+    private func metricCell(label: String, value: String, valueColor: Color = .white, hideable: Bool = true) -> some View {
         VStack(spacing: 2) {
             Text(label)
                 .font(.system(size: 8, weight: .bold))
@@ -269,6 +278,7 @@ struct PositionRowView: View {
                 .foregroundStyle(valueColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .stealthable(hideable)
         }
         .frame(maxWidth: .infinity)
     }
