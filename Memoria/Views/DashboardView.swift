@@ -404,25 +404,14 @@ struct DashboardView: View {
 
     @State private var scrubbedPoint: EquityDataPoint? = nil
 
-    private var isEquityPositive: Bool {
-        accountingEngine.portfolioState.totalPnl >= 0
-    }
-
     private var yDomain: ClosedRange<Double> {
         let profits = accountingEngine.portfolioState.equityCurve.map { $0.balance }
-        let minP = (profits.min() ?? 0) - 100
-        let maxP = (profits.max() ?? 0) + 100
+        let range = (profits.max() ?? 0) - (profits.min() ?? 0)
+        let padding = max(range * 0.1, 50.0)
+        let minP = (profits.min() ?? 0) - padding
+        let maxP = (profits.max() ?? 0) + padding
         guard maxP > minP else { return -100...100 }
         return minP...maxP
-    }
-
-    /// Running-peak balance at each point — used to shade drawdown regions.
-    private var peakAtEachPoint: [Double] {
-        var peak = accountingEngine.portfolioState.equityCurve.first?.balance ?? 0
-        return accountingEngine.portfolioState.equityCurve.map { pt in
-            if pt.balance > peak { peak = pt.balance }
-            return peak
-        }
     }
 
     private var equityCurveSection: some View {
@@ -460,8 +449,7 @@ struct DashboardView: View {
                     .frame(height: 220)
                 } else {
                     let curve = accountingEngine.portfolioState.equityCurve
-                    let peaks = peakAtEachPoint
-                    let lineColor: Color = isEquityPositive ? .green : .red
+                    let lineColor: Color = (curve.last?.balance ?? 0) >= (curve.first?.balance ?? 0) ? .green : .red
 
                     Chart {
                         // Base fill gradient
@@ -479,20 +467,6 @@ struct DashboardView: View {
                                     endPoint: .bottom
                                 )
                             )
-                        }
-
-                        // Drawdown shading: red fill from peak down to balance
-                        ForEach(Array(zip(curve, peaks).enumerated()), id: \.offset) { _, pair in
-                            let (pt, peak) = pair
-                            if pt.balance < peak - 0.01 {
-                                AreaMark(
-                                    x: .value("Time", pt.date),
-                                    yStart: .value("Balance", pt.balance),
-                                    yEnd: .value("Peak", peak)
-                                )
-                                .interpolationMethod(.monotone)
-                                .foregroundStyle(Color.red.opacity(0.18))
-                            }
                         }
 
                         // Main equity line
@@ -542,7 +516,8 @@ struct DashboardView: View {
                                 .gesture(
                                     DragGesture(minimumDistance: 0)
                                         .onChanged { value in
-                                            let x = value.location.x - geo[proxy.plotFrame!].origin.x
+                                            guard let frame = proxy.plotFrame else { return }
+                                            let x = value.location.x - geo[frame].origin.x
                                             if let date: Date = proxy.value(atX: x) {
                                                 scrubbedPoint = curve.min(by: {
                                                     abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
@@ -665,6 +640,13 @@ struct DashboardView: View {
                             Text("S&P 500").font(.caption).foregroundStyle(.secondary)
                         }
                     }
+                } else {
+                    ContentUnavailableView(
+                        benchmarkTimeframe == .ytd ? "No Trades This Year" : "No Closed Trades",
+                        systemImage: "chart.xyaxis.line",
+                        description: Text("Close a trade to compare your performance against the S&P 500.")
+                    )
+                    .frame(height: 180)
                 }
             }
             .frame(maxWidth: .infinity)
