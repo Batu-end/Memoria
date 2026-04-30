@@ -32,6 +32,7 @@ struct SettingsView: View {
     
     @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
     @AppStorage("unreadableDate", store: .app) private var unreadableDate: Bool = false
+    @AppStorage("showTickerLogos", store: .app) private var showTickerLogos: Bool = true
     @AppStorage("monochromeLogos", store: .app) private var monochromeLogos: Bool = false
     @AppStorage("stealthMode", store: .app) private var stealthMode: Bool = false
 
@@ -194,6 +195,35 @@ struct SettingsView: View {
                                 Text("Monochrome logos")
                                     .font(.system(size: 16))
                                 Text("Strips color from all ticker logos.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        #endif
+                    }
+                    .padding(.vertical, 4)
+
+                    Toggle(isOn: $showTickerLogos) {
+                        #if os(macOS)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Ticker logos", systemImage: "photo.circle")
+                            Text("Shows company logos next to trade rows.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 28)
+                        }
+                        #else
+                        HStack(spacing: 14) {
+                            Image(systemName: "photo.circle")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Ticker logos")
+                                    .font(.system(size: 16))
+                                Text("Shows company logos next to trade rows.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
