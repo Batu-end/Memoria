@@ -10,6 +10,12 @@ import SwiftData
 import Combine
 import Charts
 
+private let goldGradient = LinearGradient(
+    colors: [Color(red: 0.92, green: 0.81, blue: 0.42), Color(red: 0.71, green: 0.55, blue: 0.18)],
+    startPoint: .top,
+    endPoint: .bottom
+)
+
 extension View {
     func darkNavigationBar() -> some View {
         #if os(iOS)
@@ -21,6 +27,16 @@ extension View {
         #else
         self
         #endif
+    }
+
+    func goldTitle(_ text: String) -> some View {
+        self.toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(text)
+                    .font(.headline)
+                    .foregroundStyle(goldGradient)
+            }
+        }
     }
 }
 

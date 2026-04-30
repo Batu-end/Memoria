@@ -417,13 +417,40 @@ final class AccountingEngineTests: XCTestCase {
     func testMaxDrawdown() async {
         // Win $1000 (balance peaks at 2000), then lose $500 (balance 1500)
         // DD = (2000 - 1500) / 2000 = 25%
+        // dateClosed is set explicitly so equity curve order is deterministic regardless of test timing
+        let cal = Calendar.current
+        let day1 = cal.startOfDay(for: Date().addingTimeInterval(-86400))
+        let day2 = cal.startOfDay(for: Date())
+
         let win = makeLong("W", buys: [(100, 10)], sells: [(200, 10)], status: .closed)
+        win.dateClosed = day1
+
         let loss = makeLong("L", buys: [(100, 10)], sells: [(50, 10)], status: .closed)
-        // Dates must be ordered for equity curve
-        loss.executions.forEach { $0.date = Date().addingTimeInterval(3600) }
+        loss.dateClosed = day2
+
         engine.update(trades: [win, loss], startingBalance: 1_000)
         await settle()
         XCTAssertEqual(engine.portfolioState.maxDrawdown, 25.0, accuracy: 0.1)
+    }
+
+    func testDepositResilience() async {
+        // A cash deposit must not alter the P&L of any existing trade.
+        // Before deposit: buy 10 @ $100, sell 10 @ $110 → realized +$100, netLiq $10,100
+        let t = makeLong("AAPL", buys: [(100, 10)], sells: [(110, 10)], status: .closed)
+        engine.update(trades: [t], startingBalance: 10_000)
+        await settle()
+
+        XCTAssertEqual(engine.mathForTrade(t.id)?.totalPnl ?? 0, 100.0, accuracy: 0.001)
+        XCTAssertEqual(engine.portfolioState.netLiquidity, 10_100.0, accuracy: 0.001)
+
+        // Simulate $5,000 deposit — only startingBalance changes, trades are unchanged
+        engine.update(trades: [t], startingBalance: 15_000)
+        await settle()
+
+        XCTAssertEqual(engine.mathForTrade(t.id)?.totalPnl ?? 0, 100.0, accuracy: 0.001,
+                       "Trade P&L must be unaffected by a capital deposit")
+        XCTAssertEqual(engine.portfolioState.netLiquidity, 15_100.0, accuracy: 0.001,
+                       "Net liquidity must reflect the new balance plus existing P&L")
     }
 
     // MARK: Daily P&L Aggregator
