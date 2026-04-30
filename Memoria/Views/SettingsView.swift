@@ -249,7 +249,8 @@ struct SettingsView: View {
                 )
                 .navigationTitle("Settings")
                 .darkNavigationBar()
-                .task {
+                .task(id: portfolio.id) {
+                    liveQuotes = [:]
                     await fetchLiveQuotes()
                 }
                 .onReceive(refreshTimer) { _ in
