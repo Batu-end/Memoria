@@ -11,7 +11,8 @@ struct SummaryCard: View {
     let title: String
     let value: String
     let color: Color
-    
+    var hideable: Bool = true
+
     var body: some View {
         VStack(alignment: .leading) {
             Text(title)
@@ -21,6 +22,7 @@ struct SummaryCard: View {
                 .font(.title)
                 .bold()
                 .foregroundStyle(color)
+                .stealthable(hideable)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()

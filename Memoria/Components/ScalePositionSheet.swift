@@ -68,8 +68,8 @@ struct ScalePositionSheet: View {
             Form {
                 Section {
                     Picker("Action", selection: $type) {
-                        Text("Add (Buy)").tag(ExecutionType.buy)
-                        Text("Trim (Sell)").tag(ExecutionType.sell)
+                        Text("Buy (Add)").tag(ExecutionType.buy)
+                        Text("Sell (Trim)").tag(ExecutionType.sell)
                     }
                     .pickerStyle(.segmented)
                     .listRowBackground(Color.clear)

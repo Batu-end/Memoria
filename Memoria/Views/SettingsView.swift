@@ -10,13 +10,22 @@ import SwiftData
 import Combine
 
 struct SettingsView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
     @Query private var trades: [Trade]
     @Query private var watchlistItems: [WatchlistItem]
     @Query private var accountSnapshots: [AccountSnapshot]
     @Query private var activityLogs: [ActivityLog]
-    
-    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 0.0
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _trades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id })
+        _watchlistItems = Query(filter: #Predicate<WatchlistItem> { $0.portfolio?.id == id })
+        _accountSnapshots = Query(filter: #Predicate<AccountSnapshot> { $0.portfolio?.id == id })
+    }
+
     @AppStorage("traderName", store: .app) private var traderName: String = ""
     @AppStorage("traderPersonality", store: .app) private var personalityRaw: String = TraderPersonality.human.rawValue
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
@@ -24,6 +33,7 @@ struct SettingsView: View {
     @AppStorage("mathEngineInspector", store: .app) private var mathEngineInspectorEnabled: Bool = false
     @AppStorage("unreadableDate", store: .app) private var unreadableDate: Bool = false
     @AppStorage("monochromeLogos", store: .app) private var monochromeLogos: Bool = false
+    @AppStorage("stealthMode", store: .app) private var stealthMode: Bool = false
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
@@ -80,6 +90,7 @@ struct SettingsView: View {
                                 
                                 Text(currentBalance, format: .currency(code: "USD"))
                                     .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .stealthable()
                             }
                             .frame(maxWidth: .infinity)
                             
@@ -87,13 +98,14 @@ struct SettingsView: View {
                             
                             // Net Deposits (In vs Out)
                             VStack(spacing: 4) {
-                                Text(startingBalance >= 0 ? "NET CONTRIBUTION" : "HOUSE MONEY")
+                                Text(portfolio.startingBalance >= 0 ? "NET CONTRIBUTION" : "HOUSE MONEY")
                                     .font(.system(size: 9, weight: .bold))
                                     .foregroundStyle(.secondary)
-                                
-                                Text(abs(startingBalance), format: .currency(code: "USD"))
+
+                                Text(abs(portfolio.startingBalance), format: .currency(code: "USD"))
                                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                                    .foregroundStyle(startingBalance >= 0 ? Color.primary : Color.orange)
+                                    .foregroundStyle(portfolio.startingBalance >= 0 ? Color.primary : Color.orange)
+                                    .stealthable()
                             }
                             .frame(maxWidth: .infinity)
                         }
@@ -177,11 +189,40 @@ struct SettingsView: View {
                                 .font(.system(size: 20))
                                 .foregroundStyle(.secondary)
                                 .frame(width: 30)
-                            
+
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Monochrome logos")
                                     .font(.system(size: 16))
                                 Text("Strips color from all ticker logos.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        #endif
+                    }
+                    .padding(.vertical, 4)
+
+                    Toggle(isOn: $stealthMode) {
+                        #if os(macOS)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Stealth Mode", systemImage: "eye.slash")
+                            Text("Hides absolute dollar values across the app.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 28)
+                        }
+                        #else
+                        HStack(spacing: 14) {
+                            Image(systemName: "eye.slash")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Stealth Mode")
+                                    .font(.system(size: 16))
+                                Text("Hides absolute dollar values across the app.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
@@ -216,7 +257,7 @@ struct SettingsView: View {
                     } label: {
                         HStack {
                             Label {
-                                Text("Erase All Data")
+                                Text("Reset Portfolio")
                             } icon: {
                                 Image(systemName: "trash")
                                     .foregroundStyle(.white)
@@ -225,10 +266,10 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("Account Data")
+                    Text("Portfolio Data")
                         .foregroundStyle(.red)
                 } footer: {
-                    Text("This will permanently delete all your trades and watchlist history. This action cannot be undone.")
+                    Text("Permanently deletes all trades, watchlist items, and history in \"\(portfolio.name)\". The portfolio itself is kept. This cannot be undone.")
                 }
             }
             .formStyle(.grouped)
@@ -240,7 +281,8 @@ struct SettingsView: View {
                 )
                 .navigationTitle("Settings")
                 .darkNavigationBar()
-                .task {
+                .task(id: portfolio.id) {
+                    liveQuotes = [:]
                     await fetchLiveQuotes()
                 }
                 .onReceive(refreshTimer) { _ in
@@ -249,18 +291,18 @@ struct SettingsView: View {
                 .sheet(item: $capitalAction) { action in
                     CapitalAdjustmentSheet(isDepositing: action == .deposit, currentBalance: currentBalance) { amount in
                         if action == .deposit {
-                            startingBalance += amount
+                            portfolio.startingBalance += amount
                         } else {
-                            startingBalance -= amount
+                            portfolio.startingBalance -= amount
                         }
                     }
                 }
-            .alert("Erase All Data?", isPresented: $showingResetAlert) {
+            .alert("Reset \"\(portfolio.name)\"?", isPresented: $showingResetAlert) {
                 TextField("Type \"DELETE\" to confirm", text: $confirmationText)
-                
+
                 Button("Cancel", role: .cancel) { }
-                
-                Button("Erase Data", role: .destructive) {
+
+                Button("Reset Portfolio", role: .destructive) {
                     if confirmationText == "DELETE" {
                         eraseAllData()
                     }
@@ -286,10 +328,8 @@ struct SettingsView: View {
     }
     
     private var currentBalance: Double {
-        let totalPnl = trades.filter { $0.status == .closed }.compactMap { trade -> Double? in
-            trade.math?.totalPnl
-        }.reduce(0, +)
-        return startingBalance + totalPnl + totalFloatingPnl
+        let totalPnl = trades.filter { $0.status == .closed }.compactMap { $0.math?.totalPnl }.reduce(0, +)
+        return portfolio.startingBalance + totalPnl + totalFloatingPnl
     }
     
     private func fetchLiveQuotes() async {
@@ -307,7 +347,7 @@ struct SettingsView: View {
         for log in activityLogs { modelContext.delete(log) }
         try? modelContext.save()
 
-        startingBalance = 0.0
+        portfolio.startingBalance = 0.0
         traderName = ""
         personalityRaw = TraderPersonality.human.rawValue
         unreadableDate = false
@@ -426,6 +466,7 @@ struct CapitalAdjustmentSheet: View {
 }
 
 #Preview {
-    SettingsView()
+    let portfolio = Portfolio(name: "Main")
+    SettingsView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }

@@ -89,6 +89,7 @@ struct TradeRowView: View {
                             Text(entry, format: .currency(code: "USD"))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
+                                .stealthable()
                         }
                     }
 
@@ -101,6 +102,7 @@ struct TradeRowView: View {
                             Text(qty.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", qty) : String(format: "%.2f", qty))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
+                                .stealthable()
                         }
                     }
 
@@ -134,6 +136,7 @@ struct TradeRowView: View {
                     Text(pnl >= 0 ? "+\(pnl, specifier: "%.2f")" : "\(pnl, specifier: "%.2f")")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(pnl >= 0 ? Color.green : Color.red)
+                        .stealthable()
 
                     if let pct = math?.percentReturn {
                         Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.1f")%")
@@ -148,6 +151,7 @@ struct TradeRowView: View {
                             Text(unrealized >= 0 ? "+\(unrealized, specifier: "%.2f")" : "\(unrealized, specifier: "%.2f")")
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundStyle(unrealized >= 0 ? Color.green : Color.red)
+                                .stealthable()
                         }
 
                         if realized != 0 {
@@ -159,6 +163,7 @@ struct TradeRowView: View {
                                 Text(realized >= 0 ? "+\(realized, specifier: "%.2f")" : "\(realized, specifier: "%.2f")")
                                     .font(.system(size: 10, weight: .semibold, design: .rounded))
                                     .foregroundStyle((realized >= 0 ? Color.green : Color.red).opacity(0.65))
+                                    .stealthable()
                             }
                         }
 

@@ -50,7 +50,15 @@ struct StrategyStat: Identifiable {
 }
 
 struct AnalyticsView: View {
-    @Query(filter: #Predicate<Trade> { $0.statusRaw == "Closed" }) private var closedTrades: [Trade]
+    let portfolio: Portfolio
+
+    @Query private var closedTrades: [Trade]
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _closedTrades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id && $0.statusRaw == "Closed" })
+    }
     
     // Group trades by Strategy
     private var strategyStats: [StrategyStat] {
@@ -92,8 +100,8 @@ struct AnalyticsView: View {
                             
                             // Top Row: Global Edge Insights
                             HStack(spacing: 16) {
-                                EdgeMetricCard(title: "Long Strike", value: String(format: "%.0f%%", longWinRate), icon: "arrow.up.right", color: .blue)
-                                EdgeMetricCard(title: "Short Strike", value: String(format: "%.0f%%", shortWinRate), icon: "arrow.down.right", color: .orange)
+                                EdgeMetricCard(title: "Long Win Rate", value: String(format: "%.0f%%", longWinRate), icon: "arrow.up.right", color: .blue)
+                                EdgeMetricCard(title: "Short Win Rate", value: String(format: "%.0f%%", shortWinRate), icon: "arrow.down.right", color: .orange)
                             }
                             .padding(.horizontal)
                             
@@ -270,6 +278,7 @@ struct MetricBox: View {
 }
 
 #Preview {
-    AnalyticsView()
+    let portfolio = Portfolio(name: "Main")
+    AnalyticsView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }
