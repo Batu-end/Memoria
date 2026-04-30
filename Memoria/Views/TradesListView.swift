@@ -66,7 +66,7 @@ struct TradesListView: View {
 
                     if selectedFilter != "Open" && !closedTrades.isEmpty {
                         statsHeader
-                            .listRowInsets(EdgeInsets())
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                     }

@@ -8,6 +8,8 @@ struct TradeRowView: View {
     var engine = AccountingEngine.shared
     let trade: Trade
 
+    @AppStorage("showTickerLogos", store: .app) private var showTickerLogos: Bool = true
+
     var math: TradeAccounting? {
         engine.tradeAccounting[trade.id]
     }
@@ -22,6 +24,10 @@ struct TradeRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
+
+            if showTickerLogos {
+                TickerLogoView(ticker: trade.ticker, size: 36)
+            }
 
             // Left: Ticker + sub-info
             VStack(alignment: .leading, spacing: 3) {
