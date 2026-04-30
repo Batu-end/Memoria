@@ -355,7 +355,7 @@ struct DashboardView: View {
             HStack(spacing: 15) {
                 SummaryCard(
                     title: "Profit Factor",
-                    value: accountingEngine.portfolioState.profitFactor > 0 ? String(format: "%.2f", accountingEngine.portfolioState.profitFactor) : "0.00",
+                    value: accountingEngine.portfolioState.profitFactor.isInfinite ? "Perfect" : (accountingEngine.portfolioState.profitFactor > 0 ? String(format: "%.2f", accountingEngine.portfolioState.profitFactor) : "0.00"),
                     color: accountingEngine.portfolioState.profitFactor >= 1.5 ? .green : .orange,
                     hideable: false
                 )
