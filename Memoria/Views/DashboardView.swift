@@ -30,6 +30,7 @@ extension View {
     }
 
     func goldTitle(_ text: String) -> some View {
+        #if os(iOS)
         self.toolbar {
             ToolbarItem(placement: .principal) {
                 Text(text)
@@ -37,6 +38,9 @@ extension View {
                     .foregroundStyle(goldGradient)
             }
         }
+        #else
+        self.navigationTitle(text)
+        #endif
     }
 }
 
