@@ -694,7 +694,7 @@ struct DashboardView: View {
                     showPortfolioSwitcher = true
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "briefcase.fill")
+                        Image(systemName: "chart.pie.fill")
                             .font(.system(size: 9))
                         Text(portfolio.name)
                             .font(.system(size: 11, weight: .semibold))

@@ -21,22 +21,22 @@ struct PortfolioSwitcherView: View {
         NavigationStack {
             List {
                 ForEach(portfolios) { portfolio in
-                    Button {
+                    HStack {
+                        Text(portfolio.name)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if selectedIDString == portfolio.id.uuidString {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(.blue)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             selectedIDString = portfolio.id.uuidString
                         }
                         dismiss()
-                    } label: {
-                        HStack {
-                            Text(portfolio.name)
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            if selectedIDString == portfolio.id.uuidString {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
-                                    .fontWeight(.semibold)
-                            }
-                        }
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if portfolios.count > 1 {
@@ -54,21 +54,43 @@ struct PortfolioSwitcherView: View {
                         }
                         .tint(.orange)
                     }
+                    .contextMenu {
+                        Button {
+                            portfolioToRename = portfolio
+                            renameText = portfolio.name
+                        } label: {
+                            Label("Rename", systemImage: "pencil")
+                        }
+                        if portfolios.count > 1 {
+                            Button(role: .destructive) {
+                                portfolioToDelete = portfolio
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
                 }
             }
-            .navigationTitle("Portfolios")
-            .darkNavigationBar()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+            .safeAreaInset(edge: .bottom) {
+                HStack {
                     Button {
                         newName = ""
                         showNewAlert = true
                     } label: {
                         Label("New Portfolio", systemImage: "plus")
                     }
+                    Spacer()
                 }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.bar)
+            }
+            .navigationTitle("Portfolios")
+            .darkNavigationBar()
+            .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .keyboardShortcut(.escape, modifiers: [])
                 }
             }
             .alert("New Portfolio", isPresented: $showNewAlert) {

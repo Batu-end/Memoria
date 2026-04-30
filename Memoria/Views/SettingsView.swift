@@ -225,7 +225,7 @@ struct SettingsView: View {
                     } label: {
                         HStack {
                             Label {
-                                Text("Erase All Data")
+                                Text("Reset Portfolio")
                             } icon: {
                                 Image(systemName: "trash")
                                     .foregroundStyle(.white)
@@ -234,10 +234,10 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("Account Data")
+                    Text("Portfolio Data")
                         .foregroundStyle(.red)
                 } footer: {
-                    Text("This will permanently delete all your trades and watchlist history. This action cannot be undone.")
+                    Text("Permanently deletes all trades, watchlist items, and history in \"\(portfolio.name)\". The portfolio itself is kept. This cannot be undone.")
                 }
             }
             .formStyle(.grouped)
@@ -264,12 +264,12 @@ struct SettingsView: View {
                         }
                     }
                 }
-            .alert("Erase All Data?", isPresented: $showingResetAlert) {
+            .alert("Reset \"\(portfolio.name)\"?", isPresented: $showingResetAlert) {
                 TextField("Type \"DELETE\" to confirm", text: $confirmationText)
-                
+
                 Button("Cancel", role: .cancel) { }
-                
-                Button("Erase Data", role: .destructive) {
+
+                Button("Reset Portfolio", role: .destructive) {
                     if confirmationText == "DELETE" {
                         eraseAllData()
                     }
