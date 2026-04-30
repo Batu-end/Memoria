@@ -11,68 +11,10 @@ struct AddTradeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    // All state lives here — no @Observable binding layer
-    @State private var ticker = ""
-    @State private var priceString = ""
-    @State private var capitalString = ""
-    @State private var sharesString = ""
-    @State private var useSharesMode = false
-    @State private var side: TradeSide = .long
-    @State private var assetType: AssetType = .stock
-    @State private var selectedStrategy: TradeStrategy? = nil
-    @State private var customStrategy = ""
-    @State private var stopLossString = ""
-    @State private var takeProfitString = ""
-    @State private var confidenceScore = 0
-    @State private var notes = ""
-    @State private var isPastTrade = false
-    @State private var openDate = Date()
-    @State private var exitPriceString = ""
-    @State private var closeDate = Date()
-
-    // MARK: - Computed
-    private var price: Double? { Double(priceString) }
-    private var capital: Double? { Double(capitalString) }
-    private var shares: Double? { Double(sharesString) }
-    private var stopLoss: Double? { Double(stopLossString) }
-    private var takeProfit: Double? { Double(takeProfitString) }
-    private var exitPrice: Double? { Double(exitPriceString) }
-
-    private var effectiveCapital: Double? {
-        if useSharesMode, let s = shares, let p = price, p > 0 { return s * p }
-        return capital
-    }
-
-    private var effectiveShares: Double? {
-        if let p = price, p > 0 {
-            if useSharesMode { return shares }
-            if let c = capital { return c / p }
-        }
-        return nil
-    }
-
-    private var riskReward: Double? {
-        guard let entry = price, let sl = stopLoss, let tp = takeProfit else { return nil }
-        let risk = abs(entry - sl)
-        let reward = abs(tp - entry)
-        guard risk > 0 else { return nil }
-        return reward / risk
-    }
-
-    private var estimatedPnl: Double? {
-        guard let entry = price, let exit = exitPrice,
-              let c = effectiveCapital, entry > 0 else { return nil }
-        return (exit - entry) * (c / entry) * (side == .long ? 1.0 : -1.0)
-    }
-
-    private var isValid: Bool {
-        guard !ticker.isEmpty, price != nil else { return false }
-        let hasSize = effectiveCapital != nil
-        if isPastTrade { return hasSize && exitPrice != nil }
-        return hasSize
-    }
+    @State private var viewModel = AddTradeViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         NavigationStack {
             Form {
 
@@ -82,29 +24,28 @@ struct AddTradeView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                             ZStack(alignment: .leading) {
-                                if ticker.isEmpty {
+                                if vm.ticker.isEmpty {
                                     Text("Ticker")
                                         .font(.system(size: 17, weight: .bold, design: .rounded))
                                         .foregroundStyle(.tertiary)
                                         .allowsHitTesting(false)
-                                        // .padding(.leading, 48)
                                 }
-                                TextField("", text:$ticker)
+                                TextField("", text: $vm.ticker)
                                     .font(.system(size: 17, weight: .bold, design: .rounded))
                                     .textFieldStyle(.plain)
                                     .frame(maxWidth: 100)
-                                    .onChange(of: ticker) { _, v in ticker = v.uppercased() }
+                                    .onChange(of: vm.ticker) { _, v in vm.ticker = v.uppercased() }
                             }
                         }
 
                         Divider()
 
-                        Picker("", selection: $side) {
+                        Picker("", selection: $vm.side) {
                             ForEach(TradeSide.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
                         .pickerStyle(.segmented).frame(width: 120)
 
-                        Picker("", selection: $assetType) {
+                        Picker("", selection: $vm.assetType) {
                             ForEach(AssetType.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
                         .pickerStyle(.segmented).frame(width: 130)
@@ -116,12 +57,12 @@ struct AddTradeView: View {
                             HStack(spacing: 4) {
                                 Text("$").foregroundStyle(.secondary)
                                 ZStack(alignment: .leading) {
-                                    if priceString.isEmpty {
+                                    if vm.priceString.isEmpty {
                                         Text("0.00").foregroundStyle(.tertiary)
                                             .font(.system(.title3, design: .monospaced))
                                             .allowsHitTesting(false)
                                     }
-                                    TextField("", text:$priceString)
+                                    TextField("", text: $vm.priceString)
                                         .font(.system(.title3, design: .monospaced))
                                         .textFieldStyle(.plain)
                                 }
@@ -133,24 +74,24 @@ struct AddTradeView: View {
 
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
-                                Text(useSharesMode ? "Shares" : "Capital")
+                                Text(vm.useSharesMode ? "Shares" : "Capital")
                                     .font(.subheadline).foregroundStyle(.secondary)
                                 Spacer()
-                                Button(useSharesMode ? "Switch to $" : "Switch to shares") {
-                                    useSharesMode.toggle()
+                                Button(vm.useSharesMode ? "Switch to $" : "Switch to shares") {
+                                    vm.useSharesMode.toggle()
                                 }
                                 .font(.system(size: 10)).foregroundStyle(.blue).buttonStyle(.plain)
                             }
                             HStack(spacing: 4) {
-                                Text(useSharesMode ? "×" : "$").foregroundStyle(.secondary)
+                                Text(vm.useSharesMode ? "×" : "$").foregroundStyle(.secondary)
                                 ZStack(alignment: .leading) {
-                                    let activeString = useSharesMode ? sharesString : capitalString
+                                    let activeString = vm.useSharesMode ? vm.sharesString : vm.capitalString
                                     if activeString.isEmpty {
                                         Text("0.00").foregroundStyle(.tertiary)
                                             .font(.system(.title3, design: .monospaced))
                                             .allowsHitTesting(false)
                                     }
-                                    TextField("", text:useSharesMode ? $sharesString : $capitalString)
+                                    TextField("", text: vm.useSharesMode ? $vm.sharesString : $vm.capitalString)
                                         .font(.system(.title3, design: .monospaced))
                                         .textFieldStyle(.plain)
                                 }
@@ -159,9 +100,9 @@ struct AddTradeView: View {
                         }
                     }
 
-                    if let shares = effectiveShares, let capital = effectiveCapital, shares > 0 {
-                        LabeledContent(useSharesMode ? "Capital Required" : "Estimated Shares") {
-                            Text(useSharesMode
+                    if let shares = vm.effectiveShares, let capital = vm.effectiveCapital, shares > 0 {
+                        LabeledContent(vm.useSharesMode ? "Capital Required" : "Estimated Shares") {
+                            Text(vm.useSharesMode
                                  ? capital.formatted(.currency(code: "USD"))
                                  : String(format: "%.4f shares", shares))
                                 .font(.system(.body, design: .rounded).weight(.medium))
@@ -178,8 +119,8 @@ struct AddTradeView: View {
                             HStack(spacing: 4) {
                                 Text("$").foregroundStyle(.red.opacity(0.7))
                                 ZStack(alignment: .leading) {
-                                    if stopLossString.isEmpty { Text("—").foregroundStyle(.tertiary).font(.system(.body, design: .monospaced)).allowsHitTesting(false) }
-                                    TextField("", text:$stopLossString).font(.system(.body, design: .monospaced)).textFieldStyle(.plain)
+                                    if vm.stopLossString.isEmpty { Text("—").foregroundStyle(.tertiary).font(.system(.body, design: .monospaced)).allowsHitTesting(false) }
+                                    TextField("", text: $vm.stopLossString).font(.system(.body, design: .monospaced)).textFieldStyle(.plain)
                                 }
                             }
                         }
@@ -191,14 +132,14 @@ struct AddTradeView: View {
                             HStack(spacing: 4) {
                                 Text("$").foregroundStyle(.green.opacity(0.7))
                                 ZStack(alignment: .leading) {
-                                    if takeProfitString.isEmpty { Text("—").foregroundStyle(.tertiary).font(.system(.body, design: .monospaced)).allowsHitTesting(false) }
-                                    TextField("", text:$takeProfitString).font(.system(.body, design: .monospaced)).textFieldStyle(.plain)
+                                    if vm.takeProfitString.isEmpty { Text("—").foregroundStyle(.tertiary).font(.system(.body, design: .monospaced)).allowsHitTesting(false) }
+                                    TextField("", text: $vm.takeProfitString).font(.system(.body, design: .monospaced)).textFieldStyle(.plain)
                                 }
                             }
                         }
                     }
 
-                    if let rr = riskReward {
+                    if let rr = vm.riskReward {
                         let color: Color = rr >= 2 ? .green : rr >= 1 ? .orange : .red
                         LabeledContent("Risk : Reward") {
                             Text("1 : \(rr, specifier: "%.1f")")
@@ -209,7 +150,7 @@ struct AddTradeView: View {
                         }
                     }
 
-                    Picker("Strategy", selection: $selectedStrategy) {
+                    Picker("Strategy", selection: $vm.selectedStrategy) {
                         Text("None").tag(TradeStrategy?.none)
                         ForEach(TradeStrategy.allCases.filter { $0 != .other }, id: \.self) { strat in
                             Text(strat.rawValue).tag(TradeStrategy?.some(strat))
@@ -218,21 +159,21 @@ struct AddTradeView: View {
                     }
                     .pickerStyle(.menu)
 
-                    if selectedStrategy == .other {
-                        TextField("Custom strategy name", text: $customStrategy)
+                    if vm.selectedStrategy == .other {
+                        TextField("Custom strategy name", text: $vm.customStrategy)
                     }
 
                     LabeledContent("Confidence") {
-                        StarRatingView(rating: $confidenceScore)
+                        StarRatingView(rating: $vm.confidenceScore)
                     }
 
-                    TextEditor(text: $notes)
+                    TextEditor(text: $vm.notes)
                         .font(.system(.body, design: .serif))
                         .lineSpacing(3)
                         .frame(minHeight: 60)
                         .scrollContentBackground(.hidden)
                         .overlay(alignment: .topLeading) {
-                            if notes.isEmpty {
+                            if vm.notes.isEmpty {
                                 Text("Tap to add your notes...")
                                     .font(.system(.body, design: .serif))
                                     .foregroundStyle(.tertiary)
@@ -246,30 +187,30 @@ struct AddTradeView: View {
                 }
 
                 // ── Past Trade ───────────────────────────
-                if isPastTrade {
+                if vm.isPastTrade {
                     Section {
-                        DatePicker("Open Date", selection: $openDate, displayedComponents: .date)
+                        DatePicker("Open Date", selection: $vm.openDate, displayedComponents: .date)
 
                         HStack(spacing: 20) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Exit Price").font(.subheadline).foregroundStyle(.secondary)
                                 HStack(spacing: 4) {
                                     Text("$").foregroundStyle(.secondary)
-                                ZStack(alignment: .leading) {
-                                    if exitPriceString.isEmpty { Text("0.00").foregroundStyle(.tertiary).font(.system(.title3, design: .monospaced)).allowsHitTesting(false) }
-                                    TextField("", text:$exitPriceString).font(.system(.title3, design: .monospaced)).textFieldStyle(.plain)
-                                }
+                                    ZStack(alignment: .leading) {
+                                        if vm.exitPriceString.isEmpty { Text("0.00").foregroundStyle(.tertiary).font(.system(.title3, design: .monospaced)).allowsHitTesting(false) }
+                                        TextField("", text: $vm.exitPriceString).font(.system(.title3, design: .monospaced)).textFieldStyle(.plain)
+                                    }
                                 }
                             }
                             Divider().frame(height: 44)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Close Date").font(.subheadline).foregroundStyle(.secondary)
-                                DatePicker("", selection: $closeDate, displayedComponents: .date)
+                                DatePicker("", selection: $vm.closeDate, displayedComponents: .date)
                                     .labelsHidden()
                             }
                         }
 
-                        if let pnl = estimatedPnl {
+                        if let pnl = vm.estimatedPnl {
                             LabeledContent("Realized P&L") {
                                 Text(pnl >= 0 ? "+\(pnl, specifier: "%.2f")" : "\(pnl, specifier: "%.2f")")
                                     .font(.system(.body, design: .rounded).weight(.semibold))
@@ -286,7 +227,7 @@ struct AddTradeView: View {
             #if os(macOS)
             .background(Color(nsColor: .windowBackgroundColor))
             #endif
-            .navigationTitle(isPastTrade ? "Log Past Trade" : "New Trade")
+            .navigationTitle(vm.isPastTrade ? "Log Past Trade" : "New Trade")
             .darkNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -294,70 +235,29 @@ struct AddTradeView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { isPastTrade.toggle() }
+                        withAnimation(.easeInOut(duration: 0.2)) { vm.isPastTrade.toggle() }
                     } label: {
                         Label(
-                            isPastTrade ? "Live Trade" : "Log Past Trade",
-                            systemImage: isPastTrade ? "bolt.fill" : "clock.arrow.circlepath"
+                            vm.isPastTrade ? "Live Trade" : "Log Past Trade",
+                            systemImage: vm.isPastTrade ? "bolt.fill" : "clock.arrow.circlepath"
                         )
                         .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundStyle(isPastTrade ? .orange : .secondary)
+                    .foregroundStyle(vm.isPastTrade ? .orange : .secondary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isPastTrade ? "Log Trade" : "Open Trade") {
-                        saveTrade()
+                    Button(vm.isPastTrade ? "Log Trade" : "Open Trade") {
+                        viewModel.saveTrade(context: modelContext, portfolio: portfolio)
                         dismiss()
                     }
-                    .disabled(!isValid)
-                    .tint(isValid ? .green : nil)
+                    .disabled(!vm.isValid)
+                    .tint(vm.isValid ? .green : nil)
                     .keyboardShortcut(.return, modifiers: .command)
                 }
             }
         }
         .frame(minWidth: 440, minHeight: 480)
         .onMouseBackButton()
-    }
-
-    // MARK: - Save
-    private func saveTrade() {
-        guard let p = price else { return }
-        let status: TradeStatus = isPastTrade ? .closed : .open
-        let trade = Trade(ticker: ticker.uppercased(), status: status, side: side, assetType: assetType)
-
-        trade.entryPrice = p
-        trade.dateAdded = isPastTrade ? openDate : Date()
-        if let qty = effectiveShares { trade.quantity = qty }
-        trade.stopLoss = stopLoss
-        trade.takeProfit = takeProfit
-        trade.strategy = resolvedStrategy
-        trade.notes = notes.isEmpty ? nil : notes
-        trade.confidenceScore = confidenceScore
-
-        let openExecType: ExecutionType = side == .long ? .buy : .sell
-        if let qty = effectiveShares {
-            trade.executions.append(Execution(price: p, quantity: qty, type: openExecType, date: isPastTrade ? openDate : Date()))
-        }
-
-        if isPastTrade, let exit = exitPrice, let qty = effectiveShares {
-            let closeExecType: ExecutionType = side == .long ? .sell : .buy
-            trade.executions.append(Execution(price: exit, quantity: qty, type: closeExecType, date: closeDate))
-            trade.exitPrice = exit
-            trade.dateClosed = closeDate
-        }
-
-        trade.portfolio = portfolio
-        modelContext.insert(trade)
-        AnalyticsService.shared.log(
-            isPastTrade ? .tradeClosed : .tradeOpened,
-            details: "Ticker: \(ticker), Side: \(side.rawValue)",
-            context: modelContext
-        )
-    }
-
-    private var resolvedStrategy: String? {
-        guard let strat = selectedStrategy else { return nil }
-        return strat == .other ? (customStrategy.isEmpty ? nil : customStrategy) : strat.rawValue
     }
 }
 
