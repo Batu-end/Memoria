@@ -9,6 +9,8 @@ struct TradeRowView: View {
     let trade: Trade
 
     @AppStorage("showTickerLogos", store: .app) private var showTickerLogos: Bool = true
+    @State private var dotOpacity: Double = 0.2
+    @State private var shimmerX: CGFloat = -600
 
     var math: TradeAccounting? {
         engine.tradeAccounting[trade.id]
@@ -19,51 +21,74 @@ struct TradeRowView: View {
             if let pnl = math?.totalPnl { return pnl >= 0 ? .green : .red }
             return .purple
         }
-        return .blue
+        let unrealized = math?.unrealizedPnl ?? 0
+        if unrealized > 0 { return .green }
+        if unrealized < 0 { return .red }
+        return Color.white.opacity(0.25)
+    }
+
+    private var dotColor: Color {
+        let unrealized = math?.unrealizedPnl ?? 0
+        if unrealized > 0 { return .green }
+        if unrealized < 0 { return .red }
+        return Color.white.opacity(0.35)
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
 
             if showTickerLogos {
-                TickerLogoView(ticker: trade.ticker, size: 36)
+                TickerLogoView(ticker: trade.ticker, size: 32)
             }
 
-            // Left: Ticker + sub-info
-            VStack(alignment: .leading, spacing: 3) {
-                Text(trade.ticker)
-                    .font(.system(size: 20, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white)
+            // Left: Ticker + entry
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Text(trade.ticker)
+                        .font(.system(size: 17, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
 
-                HStack(spacing: 8) {
-                    if let entry = math?.vwap {
-                        Text(entry, format: .currency(code: "USD"))
-                            .stealthable()
-                    }
-                    let qty = math?.effectiveQuantity ?? 0
-                    if qty > 0 {
-                        Text(qty.truncatingRemainder(dividingBy: 1) == 0
-                             ? String(format: "%.0f sh", qty)
-                             : String(format: "%.2f sh", qty))
-                            .stealthable()
-                    }
-                    Text(trade.dateAdded, format: .dateTime.month(.abbreviated).day())
-                    if trade.assetType == .etf {
-                        Text("ETF").foregroundStyle(.blue)
+                    if trade.status == .open {
+                        Circle()
+                            .fill(dotColor)
+                            .frame(width: 5, height: 5)
+                            .opacity(dotOpacity)
                     }
                 }
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+
+                if let entry = math?.vwap {
+                    Text(entry, format: .currency(code: "USD"))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .stealthable()
+                }
             }
 
-            Spacer()
+            Spacer(minLength: 4)
 
-            // Middle: Side pill
+            // Middle: Shares + date
+            let qty = math?.effectiveQuantity ?? 0
+            VStack(alignment: .leading, spacing: 1) {
+                if qty > 0 {
+                    Text(qty.truncatingRemainder(dividingBy: 1) == 0
+                         ? String(format: "%.0f Sh", qty)
+                         : String(format: "%.2f Sh", qty))
+                        .stealthable()
+                }
+                Text(trade.dateAdded, format: .dateTime.month(.abbreviated).day())
+                if trade.assetType == .etf {
+                    Text("ETF").foregroundStyle(.blue)
+                }
+            }
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+
+            // Side pill
             Text(trade.side == .long ? "LONG" : "SHORT")
-                .font(.system(size: 9, weight: .black))
+                .font(.system(size: 8, weight: .black))
                 .foregroundStyle(trade.side == .long ? .green : .red)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
                 .background((trade.side == .long ? Color.green : Color.red).opacity(0.12))
                 .clipShape(Capsule())
 
@@ -72,19 +97,45 @@ struct TradeRowView: View {
                 pnlView
             }
         }
-        .padding(14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(accentColor)
                 .frame(width: 3)
-                .clipShape(.rect(
-                    topLeadingRadius: 12,
-                    bottomLeadingRadius: 12,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 0
-                ))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            if trade.status == .open {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .white.opacity(0.12), location: 0.5),
+                                .init(color: .clear, location: 1)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 400)
+                    .rotationEffect(.degrees(15))
+                    .offset(x: shimmerX)
+                    .blendMode(.overlay)
+                    .allowsHitTesting(false)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        .onAppear {
+            guard trade.status == .open else { return }
+            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+                dotOpacity = 1.0
+            }
+            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
+                shimmerX = 800
+            }
         }
     }
 
@@ -92,8 +143,10 @@ struct TradeRowView: View {
     private var pnlView: some View {
         if trade.status == .closed, let pnl = math?.totalPnl {
             Text(pnl >= 0 ? "+\(pnl, specifier: "%.2f")" : "\(pnl, specifier: "%.2f")")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(pnl >= 0 ? Color.green : Color.red)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .stealthable()
             if let pct = math?.percentReturn {
                 Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.1f")%")
@@ -106,8 +159,10 @@ struct TradeRowView: View {
             if unrealized != 0 || realized != 0 {
                 if unrealized != 0 {
                     Text(unrealized >= 0 ? "+\(unrealized, specifier: "%.2f")" : "\(unrealized, specifier: "%.2f")")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(unrealized >= 0 ? Color.green : Color.red)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                         .stealthable()
                 }
                 if realized != 0 {
@@ -119,22 +174,18 @@ struct TradeRowView: View {
                         Text(realized >= 0 ? "+\(realized, specifier: "%.2f")" : "\(realized, specifier: "%.2f")")
                             .font(.system(size: 10, weight: .semibold, design: .rounded))
                             .foregroundStyle((realized >= 0 ? Color.green : Color.red).opacity(0.65))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                             .stealthable()
                     }
                 }
-                if let vwap = math?.vwap, let sl = trade.stopLoss, vwap > 0 {
-                    let dist = ((sl - vwap) / vwap) * 100 * (trade.side == .short ? -1 : 1)
-                    Text("SL \(dist >= 0 ? "+" : "")\(dist, specifier: "%.1f")%")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(dist < -5 ? Color.red : Color.secondary)
-                }
             } else {
                 Text("OPEN")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.blue)
-                    .padding(.horizontal, 8)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 7)
                     .padding(.vertical, 3)
-                    .background(Color.blue.opacity(0.15))
+                    .background(Color.white.opacity(0.08))
                     .clipShape(Capsule())
             }
         }
