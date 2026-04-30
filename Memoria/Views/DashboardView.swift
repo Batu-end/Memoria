@@ -38,6 +38,7 @@ struct DashboardView: View {
     @AppStorage("traderPersonality", store: .app) private var personalityRaw: String = TraderPersonality.human.rawValue
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
     @AppStorage("unreadableDate", store: .app) private var unreadableDate: Bool = false
+    @AppStorage("stealthMode", store: .app) private var stealthMode = false
 
     // Live Data Source — scoped to active portfolio
     @Query private var trades: [Trade]
@@ -130,8 +131,27 @@ struct DashboardView: View {
                 .foregroundColor(.secondary)
                 .tracking(2)
 
-            Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
-                .font(.custom("Bodoni 72", size: 64))
+            ZStack {
+                Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
+                    .opacity(stealthMode ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.2), value: stealthMode)
+
+                Text("Stealth.")
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.92, green: 0.81, blue: 0.42), // Light Gold
+                                Color(red: 0.71, green: 0.55, blue: 0.18)  // Dark Gold
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: Color(red: 0.85, green: 0.65, blue: 0.25).opacity(0.3), radius: 6, x: 0, y: 2)
+                    .opacity(stealthMode ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.2), value: stealthMode)
+            }
+            .font(.custom("Bodoni 72", size: 64))
                 
             // Market Status Indicator
             HStack(spacing: 6) {
@@ -181,6 +201,7 @@ struct DashboardView: View {
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundStyle(accountingEngine.portfolioState.unrealizedPnl >= 0 ? .green : .red)
                     }
+                    .stealthable()
 
                     Text("\(accountingEngine.portfolioState.unrealizedReturn >= 0 ? "+" : "")\(accountingEngine.portfolioState.unrealizedReturn, specifier: "%.2f")%")
                         .font(.system(size: 11, weight: .medium))
@@ -200,6 +221,7 @@ struct DashboardView: View {
                     Text(accountingEngine.portfolioState.totalExposure, format: .currency(code: "USD"))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(.blue)
+                        .stealthable()
 
                     Text("\(accountingEngine.portfolioState.openTradesCount) Active Positions")
                         .font(.system(size: 11, weight: .medium))
@@ -250,6 +272,7 @@ struct DashboardView: View {
                     Text(vwap, format: .currency(code: "USD"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .stealthable()
                 }
             }
 
@@ -296,6 +319,7 @@ struct DashboardView: View {
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(unrealized >= 0 ? .green : .red)
                 .frame(minWidth: 70, alignment: .trailing)
+                .stealthable()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -317,12 +341,14 @@ struct DashboardView: View {
                 SummaryCard(
                     title: "Total P&L",
                     value: formatPnl(accountingEngine.portfolioState.totalPnl),
-                    color: accountingEngine.portfolioState.totalPnl >= 0 ? .green : .red
+                    color: accountingEngine.portfolioState.totalPnl >= 0 ? .green : .red,
+                    hideable: true
                 )
                 SummaryCard(
                     title: "Win Rate",
                     value: accountingEngine.portfolioState.closedTradesCount > 0 ? String(format: "%.0f%%", accountingEngine.portfolioState.winRate) : "N/A",
-                    color: accountingEngine.portfolioState.winRate >= 50 ? .green : .orange
+                    color: accountingEngine.portfolioState.winRate >= 50 ? .green : .orange,
+                    hideable: false
                 )
             }
             
@@ -330,12 +356,14 @@ struct DashboardView: View {
                 SummaryCard(
                     title: "Profit Factor",
                     value: accountingEngine.portfolioState.profitFactor > 0 ? String(format: "%.2f", accountingEngine.portfolioState.profitFactor) : "0.00",
-                    color: accountingEngine.portfolioState.profitFactor >= 1.5 ? .green : .orange
+                    color: accountingEngine.portfolioState.profitFactor >= 1.5 ? .green : .orange,
+                    hideable: false
                 )
                 SummaryCard(
                     title: "Avg Win / Loss",
                     value: "\(Int(accountingEngine.portfolioState.avgWin)) / \(Int(abs(accountingEngine.portfolioState.avgLoss)))",
-                    color: accountingEngine.portfolioState.avgWin > abs(accountingEngine.portfolioState.avgLoss) ? .green : .red
+                    color: accountingEngine.portfolioState.avgWin > abs(accountingEngine.portfolioState.avgLoss) ? .green : .red,
+                    hideable: true
                 )
             }
 
@@ -343,12 +371,14 @@ struct DashboardView: View {
                 SummaryCard(
                     title: "Avg Hold Time",
                     value: avgHoldTimeFormatted,
-                    color: .cyan
+                    color: .cyan,
+                    hideable: false
                 )
                 SummaryCard(
                     title: "Max Drawdown",
                     value: String(format: "%.1f%%", accountingEngine.portfolioState.maxDrawdown),
-                    color: accountingEngine.portfolioState.maxDrawdown < 5.0 ? .green : .red
+                    color: accountingEngine.portfolioState.maxDrawdown < 5.0 ? .green : .red,
+                    hideable: false
                 )
             }
 
@@ -356,12 +386,14 @@ struct DashboardView: View {
                 SummaryCard(
                     title: "Open Trades",
                     value: "\(accountingEngine.portfolioState.openTradesCount)",
-                    color: .blue
+                    color: .blue,
+                    hideable: false
                 )
                 SummaryCard(
                     title: "Closed Trades",
                     value: "\(accountingEngine.portfolioState.closedTradesCount)",
-                    color: .purple
+                    color: .purple,
+                    hideable: false
                 )
             }
         }
@@ -690,25 +722,41 @@ struct DashboardView: View {
                     .italic(personality.isItalic)
                     .padding(.leading, 2)
 
-                Button {
-                    showPortfolioSwitcher = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chart.pie.fill")
-                            .font(.system(size: 9))
-                        Text(portfolio.name)
-                            .font(.system(size: 11, weight: .semibold))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .bold))
+                HStack(spacing: 6) {
+                    Button {
+                        showPortfolioSwitcher = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chart.pie.fill")
+                                .font(.system(size: 9))
+                            Text(portfolio.name)
+                                .font(.system(size: 11, weight: .semibold))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
                     }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                    .buttonStyle(.plain)
+
+                    Button {
+                        stealthMode.toggle()
+                    } label: {
+                        Image(systemName: stealthMode ? "eye.slash" : "eye")
+                            .font(.system(size: 9))
+                            .foregroundStyle(stealthMode ? .primary : .secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
                 .padding(.leading, 2)
             }
 

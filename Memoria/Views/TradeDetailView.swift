@@ -233,19 +233,19 @@ struct TradeDetailView: View {
 
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
                     GridRow {
-                        DetailItem(label: "Avg Entry", value: math?.vwap != nil ? String(format: "$%.2f", math!.vwap!) : "—")
-                        DetailItem(label: "Active Qty", value: "\(Int(math?.effectiveQuantity ?? 0))")
+                        DetailItem(label: "Avg Entry", value: math?.vwap != nil ? String(format: "$%.2f", math!.vwap!) : "—", hideable: true)
+                        DetailItem(label: "Active Qty", value: "\(Int(math?.effectiveQuantity ?? 0))", hideable: true)
                     }
                     GridRow {
-                        DetailItem(label: "Size", value: math != nil ? String(format: "$%.0f", math!.positionSize) : "—")
+                        DetailItem(label: "Size", value: math != nil ? String(format: "$%.0f", math!.positionSize) : "—", hideable: true)
                         if trade.status == .closed {
-                            DetailItem(label: "Exit", value: trade.exitPrice != nil ? String(format: "$%.2f", trade.exitPrice!) : "—")
+                            DetailItem(label: "Exit", value: trade.exitPrice != nil ? String(format: "$%.2f", trade.exitPrice!) : "—", hideable: true)
                         }
                     }
                     if trade.status == .closed {
                         GridRow {
-                            DetailItem(label: "Closed", value: trade.dateClosed.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? "—")
-                            DetailItem(label: "Held", value: trade.holdingDays.map { "\($0) days" } ?? "—")
+                            DetailItem(label: "Closed", value: trade.dateClosed.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? "—", hideable: false)
+                            DetailItem(label: "Held", value: trade.holdingDays.map { "\($0) days" } ?? "—", hideable: false)
                         }
                     }
                 }
@@ -267,6 +267,7 @@ struct TradeDetailView: View {
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(pnlColor)
                         .shadow(color: pnlColor.opacity(0.4), radius: 10, x: 0, y: 0)
+                        .stealthable()
 
                     HStack(spacing: 12) {
                         if let pct = math?.percentReturn {
@@ -352,9 +353,9 @@ struct TradeDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("TARGETS").font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
             HStack(spacing: 20) {
-                if let sl = trade.stopLoss { DetailItem(label: "Stop Loss", value: String(format: "$%.2f", sl), color: .red) }
-                if let tp = trade.takeProfit { DetailItem(label: "Take Profit", value: String(format: "$%.2f", tp), color: .green) }
-                if let rr = trade.riskRewardRatio { DetailItem(label: "R:R", value: String(format: "1:%.1f", rr), color: .orange) }
+                if let sl = trade.stopLoss { DetailItem(label: "Stop Loss", value: String(format: "$%.2f", sl), color: .red, hideable: true) }
+                if let tp = trade.takeProfit { DetailItem(label: "Take Profit", value: String(format: "$%.2f", tp), color: .green, hideable: true) }
+                if let rr = trade.riskRewardRatio { DetailItem(label: "R:R", value: String(format: "1:%.1f", rr), color: .orange, hideable: false) }
             }
         }
         .padding(16)
@@ -424,6 +425,7 @@ struct TradeDetailView: View {
             Text(value)
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
+                .stealthable()
         }
     }
 
@@ -641,6 +643,7 @@ struct TradeDetailView: View {
 
                                         Text("\(exec.price, format: .currency(code: "USD"))")
                                             .font(.system(size: 13, weight: .bold).monospacedDigit())
+                                            .stealthable()
                                     }
 
                                     HStack {
@@ -652,6 +655,7 @@ struct TradeDetailView: View {
                                         Text("\(Int(exec.quantity)) shares")
                                             .font(.system(size: 11).monospacedDigit())
                                             .foregroundStyle(.secondary)
+                                            .stealthable()
                                     }
                                 }
                             }
@@ -756,11 +760,13 @@ struct DetailItem: View {
     let label: String
     let value: String
     var color: Color = .white
+    var hideable: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.system(size: 10)).foregroundStyle(.secondary)
             Text(value).font(.system(size: 14, weight: .semibold)).foregroundStyle(color)
+                .stealthable(hideable)
         }
     }
 }
