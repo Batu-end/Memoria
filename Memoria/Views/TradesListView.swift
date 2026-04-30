@@ -89,7 +89,15 @@ struct TradesListView: View {
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
+                                
                                 if trade.status == .open {
+                                    Button {
+                                        tradeToScale = trade
+                                    } label: {
+                                        Label("Manage", systemImage: "slider.horizontal.3")
+                                    }
+                                    .tint(.orange)
+                                    
                                     Button {
                                         tradeToClose = trade
                                     } label: {
