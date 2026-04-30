@@ -31,17 +31,27 @@ enum BenchmarkTimeframe: String, CaseIterable {
 }
 
 struct DashboardView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("startingBalance", store: .app) private var startingBalance: Double = 0.0
     @AppStorage("traderName", store: .app) private var traderName: String = ""
     @AppStorage("traderPersonality", store: .app) private var personalityRaw: String = TraderPersonality.human.rawValue
     private var personality: TraderPersonality { TraderPersonality(rawValue: personalityRaw) ?? .human }
     @AppStorage("unreadableDate", store: .app) private var unreadableDate: Bool = false
-    
-    // Live Data Source
-    @Query(sort: \Trade.dateAdded, order: .reverse) private var trades: [Trade]
+    @AppStorage("stealthMode", store: .app) private var stealthMode = false
+
+    // Live Data Source — scoped to active portfolio
+    @Query private var trades: [Trade]
     @Query private var watchlistItems: [WatchlistItem]
-    @Query(filter: #Predicate<Trade> { $0.statusRaw == "Open" }) private var openTrades: [Trade]
+    @Query private var openTrades: [Trade]
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _trades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id }, sort: \Trade.dateAdded, order: .reverse)
+        _watchlistItems = Query(filter: #Predicate<WatchlistItem> { $0.portfolio?.id == id })
+        _openTrades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id && $0.statusRaw == "Open" })
+    }
     
     // Live State
     @State private var liveQuotes: [String: StockQuote] = [:]
@@ -55,6 +65,7 @@ struct DashboardView: View {
     
     @State private var marketStatus: MarketStatus = MarketService.shared.currentStatus()
     @State private var isDashboardReady = false
+    @State private var showPortfolioSwitcher = false
     
     // The Math engine
     @State private var accountingEngine = AccountingEngine.shared
@@ -81,7 +92,7 @@ struct DashboardView: View {
             LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.11), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
         )
-        .task {
+        .task(id: portfolio.id) {
             await initializeDashboard()
         }
         .onReceive(refreshTimer) { _ in
@@ -93,17 +104,20 @@ struct DashboardView: View {
             updateTask = Task {
                 try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
                 guard !Task.isCancelled else { return }
-                accountingEngine.update(trades: newValue, startingBalance: startingBalance)
+                accountingEngine.update(trades: newValue, startingBalance: portfolio.startingBalance)
             }
         }
         .onChange(of: liveQuotes) { _, newValue in
             accountingEngine.update(quotes: newValue)
         }
-        .onChange(of: startingBalance) { _, newValue in
+        .onChange(of: portfolio.startingBalance) { _, newValue in
             accountingEngine.update(trades: trades, startingBalance: newValue)
         }
         .onChange(of: benchmarkTimeframe) { _, _ in
             Task { await fetchSpyData() }
+        }
+        .sheet(isPresented: $showPortfolioSwitcher) {
+            PortfolioSwitcherView()
         }
     }
     
@@ -117,8 +131,27 @@ struct DashboardView: View {
                 .foregroundColor(.secondary)
                 .tracking(2)
 
-            Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
-                .font(.custom("Bodoni 72", size: 64))
+            ZStack {
+                Text(accountingEngine.portfolioState.netLiquidity, format: .currency(code: "USD"))
+                    .opacity(stealthMode ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.2), value: stealthMode)
+
+                Text("Stealth.")
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.92, green: 0.81, blue: 0.42), // Light Gold
+                                Color(red: 0.71, green: 0.55, blue: 0.18)  // Dark Gold
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: Color(red: 0.85, green: 0.65, blue: 0.25).opacity(0.3), radius: 6, x: 0, y: 2)
+                    .opacity(stealthMode ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.2), value: stealthMode)
+            }
+            .font(.custom("Bodoni 72", size: 64))
                 
             // Market Status Indicator
             HStack(spacing: 6) {
@@ -168,6 +201,7 @@ struct DashboardView: View {
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundStyle(accountingEngine.portfolioState.unrealizedPnl >= 0 ? .green : .red)
                     }
+                    .stealthable()
 
                     Text("\(accountingEngine.portfolioState.unrealizedReturn >= 0 ? "+" : "")\(accountingEngine.portfolioState.unrealizedReturn, specifier: "%.2f")%")
                         .font(.system(size: 11, weight: .medium))
@@ -187,6 +221,7 @@ struct DashboardView: View {
                     Text(accountingEngine.portfolioState.totalExposure, format: .currency(code: "USD"))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(.blue)
+                        .stealthable()
 
                     Text("\(accountingEngine.portfolioState.openTradesCount) Active Positions")
                         .font(.system(size: 11, weight: .medium))
@@ -237,6 +272,7 @@ struct DashboardView: View {
                     Text(vwap, format: .currency(code: "USD"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .stealthable()
                 }
             }
 
@@ -278,19 +314,12 @@ struct DashboardView: View {
                 }
             }
 
-            // Stop distance
-            if let vwap = math?.vwap, let sl = trade.stopLoss, vwap > 0 {
-                let dist = ((sl - vwap) / vwap) * 100 * (trade.side == .short ? -1 : 1)
-                Text("SL \(dist >= 0 ? "+" : "")\(dist, specifier: "%.1f")%")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(dist < -5 ? Color.red : Color.secondary)
-            }
-
             // Unrealized P&L
             Text(unrealized >= 0 ? "+\(unrealized, specifier: "%.2f")" : "\(unrealized, specifier: "%.2f")")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(unrealized >= 0 ? .green : .red)
                 .frame(minWidth: 70, alignment: .trailing)
+                .stealthable()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -312,25 +341,29 @@ struct DashboardView: View {
                 SummaryCard(
                     title: "Total P&L",
                     value: formatPnl(accountingEngine.portfolioState.totalPnl),
-                    color: accountingEngine.portfolioState.totalPnl >= 0 ? .green : .red
+                    color: accountingEngine.portfolioState.totalPnl >= 0 ? .green : .red,
+                    hideable: true
                 )
                 SummaryCard(
                     title: "Win Rate",
                     value: accountingEngine.portfolioState.closedTradesCount > 0 ? String(format: "%.0f%%", accountingEngine.portfolioState.winRate) : "N/A",
-                    color: accountingEngine.portfolioState.winRate >= 50 ? .green : .orange
+                    color: accountingEngine.portfolioState.winRate >= 50 ? .green : .orange,
+                    hideable: false
                 )
             }
             
             HStack(spacing: 15) {
                 SummaryCard(
                     title: "Profit Factor",
-                    value: accountingEngine.portfolioState.profitFactor > 0 ? String(format: "%.2f", accountingEngine.portfolioState.profitFactor) : "0.00",
-                    color: accountingEngine.portfolioState.profitFactor >= 1.5 ? .green : .orange
+                    value: accountingEngine.portfolioState.profitFactor.isInfinite ? "Perfect" : (accountingEngine.portfolioState.profitFactor > 0 ? String(format: "%.2f", accountingEngine.portfolioState.profitFactor) : "0.00"),
+                    color: accountingEngine.portfolioState.profitFactor >= 1.5 ? .green : .orange,
+                    hideable: false
                 )
                 SummaryCard(
                     title: "Avg Win / Loss",
                     value: "\(Int(accountingEngine.portfolioState.avgWin)) / \(Int(abs(accountingEngine.portfolioState.avgLoss)))",
-                    color: accountingEngine.portfolioState.avgWin > abs(accountingEngine.portfolioState.avgLoss) ? .green : .red
+                    color: accountingEngine.portfolioState.avgWin > abs(accountingEngine.portfolioState.avgLoss) ? .green : .red,
+                    hideable: true
                 )
             }
 
@@ -338,12 +371,14 @@ struct DashboardView: View {
                 SummaryCard(
                     title: "Avg Hold Time",
                     value: avgHoldTimeFormatted,
-                    color: .cyan
+                    color: .cyan,
+                    hideable: false
                 )
                 SummaryCard(
                     title: "Max Drawdown",
                     value: String(format: "%.1f%%", accountingEngine.portfolioState.maxDrawdown),
-                    color: accountingEngine.portfolioState.maxDrawdown < 5.0 ? .green : .red
+                    color: accountingEngine.portfolioState.maxDrawdown < 5.0 ? .green : .red,
+                    hideable: false
                 )
             }
 
@@ -351,12 +386,14 @@ struct DashboardView: View {
                 SummaryCard(
                     title: "Open Trades",
                     value: "\(accountingEngine.portfolioState.openTradesCount)",
-                    color: .blue
+                    color: .blue,
+                    hideable: false
                 )
                 SummaryCard(
                     title: "Closed Trades",
                     value: "\(accountingEngine.portfolioState.closedTradesCount)",
-                    color: .purple
+                    color: .purple,
+                    hideable: false
                 )
             }
         }
@@ -555,7 +592,7 @@ struct DashboardView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "building.columns.fill")
                         if let sr = spyReturn {
-                            let spyProfit = (sr / 100.0) * startingBalance
+                            let spyProfit = (sr / 100.0) * portfolio.startingBalance
                             Text("SPY \(spyProfit >= 0 ? "+" : "")\(spyProfit, format: .currency(code: "USD"))")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(spyProfit >= 0 ? Color.green : Color.red)
@@ -591,7 +628,7 @@ struct DashboardView: View {
                         
                         if let firstSpy = spyHistoricalData.first?.close, firstSpy > 0 {
                             ForEach(spyHistoricalData) { point in
-                                let spyProfit = ((point.close - firstSpy) / firstSpy) * startingBalance
+                                let spyProfit = ((point.close - firstSpy) / firstSpy) * portfolio.startingBalance
                                 LineMark(
                                     x: .value("Time", point.date),
                                     y: .value("Profit", spyProfit),
@@ -672,7 +709,7 @@ struct DashboardView: View {
         let month = Date().formatted(.dateTime.month(.wide))
         let year = Date().formatted(.dateTime.year())
         return HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("\(timeOfDayLabel),")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.cyan)
@@ -684,6 +721,27 @@ struct DashboardView: View {
                     .foregroundStyle(personality.nameColor)
                     .italic(personality.isItalic)
                     .padding(.leading, 2)
+
+                Button {
+                    showPortfolioSwitcher = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chart.pie.fill")
+                            .font(.system(size: 9))
+                        Text(portfolio.name)
+                            .font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 2)
             }
 
             Spacer()
@@ -702,6 +760,21 @@ struct DashboardView: View {
                     .font(.system(size: 10, weight: .regular, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.1))
                     .tracking(1)
+
+                Button {
+                    stealthMode.toggle()
+                } label: {
+                    Image(systemName: stealthMode ? "eye.slash" : "eye")
+                        .font(.system(size: 9))
+                        .foregroundStyle(stealthMode ? .primary : .secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
         }
         .padding(.horizontal)
@@ -711,8 +784,9 @@ struct DashboardView: View {
     // MARK: - Lifecycle Logic
     
     private func initializeDashboard() async {
-        // Reduced logic: Just sync the engine once on startup
-        accountingEngine.update(trades: trades, startingBalance: startingBalance)
+        liveQuotes = [:]
+        isDashboardReady = false
+        accountingEngine.update(trades: trades, startingBalance: portfolio.startingBalance)
         
         await fetchLiveQuotes()
         await fetchSpyData()
@@ -827,7 +901,7 @@ struct DashboardView: View {
     private var relativeYDomain: ClosedRange<Double> {
         let curve = accountingEngine.calculateRelativeCurve(from: benchmarkStartDate).map { $0.balance }
         let firstSpy = spyHistoricalData.first?.close ?? 1.0
-        let spyProfits = spyHistoricalData.map { (($0.close - firstSpy) / firstSpy) * startingBalance }
+        let spyProfits = spyHistoricalData.map { (($0.close - firstSpy) / firstSpy) * portfolio.startingBalance }
         
         let allValues = curve + spyProfits
         guard !allValues.isEmpty else { return -100...100 }
@@ -838,6 +912,7 @@ struct DashboardView: View {
 }
 
 #Preview {
-    DashboardView()
+    let portfolio = Portfolio(name: "Main")
+    DashboardView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }

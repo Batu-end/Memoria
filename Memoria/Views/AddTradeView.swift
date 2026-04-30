@@ -6,6 +6,8 @@ import SwiftUI
 import SwiftData
 
 struct AddTradeView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -344,6 +346,7 @@ struct AddTradeView: View {
             trade.dateClosed = closeDate
         }
 
+        trade.portfolio = portfolio
         modelContext.insert(trade)
         AnalyticsService.shared.log(
             isPastTrade ? .tradeClosed : .tradeOpened,
@@ -359,5 +362,6 @@ struct AddTradeView: View {
 }
 
 #Preview {
-    AddTradeView().preferredColorScheme(.dark)
+    let portfolio = Portfolio(name: "Main")
+    AddTradeView(portfolio: portfolio).preferredColorScheme(.dark)
 }

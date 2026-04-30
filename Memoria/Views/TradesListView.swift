@@ -9,8 +9,16 @@ import SwiftUI
 import SwiftData
 
 struct TradesListView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Trade.dateAdded, order: .reverse) private var allTrades: [Trade]
+    @Query private var allTrades: [Trade]
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _allTrades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id }, sort: \Trade.dateAdded, order: .reverse)
+    }
     
     var accountingEngine = AccountingEngine.shared
     
@@ -81,7 +89,15 @@ struct TradesListView: View {
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
+                                
                                 if trade.status == .open {
+                                    Button {
+                                        tradeToScale = trade
+                                    } label: {
+                                        Label("Manage", systemImage: "slider.horizontal.3")
+                                    }
+                                    .tint(.orange)
+                                    
                                     Button {
                                         tradeToClose = trade
                                     } label: {
@@ -126,7 +142,7 @@ struct TradesListView: View {
                 }
             }
             .sheet(isPresented: $showAddTrade) {
-                AddTradeView()
+                AddTradeView(portfolio: portfolio)
             }
             .sheet(item: $tradeToClose) { trade in
                 CloseTradeSheet(trade: trade, marketPrice: accountingEngine.currentPrice(for: trade.ticker))
@@ -184,6 +200,7 @@ struct TradesListView: View {
                 Text(accountingEngine.portfolioState.totalPnl >= 0 ? "+\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")" : "\(accountingEngine.portfolioState.totalPnl, specifier: "%.2f")")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
+                    .stealthable()
             }
 
             Spacer()
@@ -274,6 +291,7 @@ struct StatPill: View {
 }
 
 #Preview {
-    TradesListView()
+    let portfolio = Portfolio(name: "Main")
+    TradesListView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }

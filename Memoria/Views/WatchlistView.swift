@@ -9,9 +9,19 @@ import SwiftData
 import Combine
 
 struct WatchlistView: View {
+    let portfolio: Portfolio
+
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: [SortDescriptor(\WatchlistItem.sortOrder), SortDescriptor(\WatchlistItem.dateAdded, order: .reverse)])
-    private var watchlistItems: [WatchlistItem]
+    @Query private var watchlistItems: [WatchlistItem]
+
+    init(portfolio: Portfolio) {
+        self.portfolio = portfolio
+        let id = portfolio.id
+        _watchlistItems = Query(
+            filter: #Predicate<WatchlistItem> { $0.portfolio?.id == id },
+            sort: [SortDescriptor(\WatchlistItem.sortOrder), SortDescriptor(\WatchlistItem.dateAdded, order: .reverse)]
+        )
+    }
 
     @State private var showAddItem = false
     @State private var isRefreshing = false
@@ -137,7 +147,7 @@ struct WatchlistView: View {
                 }
             }
             .sheet(isPresented: $showAddItem) {
-                AddWatchlistItemView()
+                AddWatchlistItemView(portfolio: portfolio)
                     .onDisappear {
                         Task { await refreshQuotes() }
                     }
@@ -157,6 +167,7 @@ struct WatchlistView: View {
                     let symbol = iosTickerInput.trimmingCharacters(in: .whitespaces).uppercased()
                     if !symbol.isEmpty {
                         let item = WatchlistItem(ticker: symbol)
+                        item.portfolio = portfolio
                         modelContext.insert(item)
                         try? modelContext.save()
                         AnalyticsService.shared.log(.watchlistItemAdded, details: "Ticker: \(symbol)", context: modelContext)
@@ -229,6 +240,7 @@ struct WatchlistView: View {
 }
 
 #Preview {
-    WatchlistView()
+    let portfolio = Portfolio(name: "Main")
+    WatchlistView(portfolio: portfolio)
         .preferredColorScheme(.dark)
 }
