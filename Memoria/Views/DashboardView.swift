@@ -722,41 +722,25 @@ struct DashboardView: View {
                     .italic(personality.isItalic)
                     .padding(.leading, 2)
 
-                HStack(spacing: 6) {
-                    Button {
-                        showPortfolioSwitcher = true
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chart.pie.fill")
-                                .font(.system(size: 9))
-                            Text(portfolio.name)
-                                .font(.system(size: 11, weight: .semibold))
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 9, weight: .bold))
-                        }
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        stealthMode.toggle()
-                    } label: {
-                        Image(systemName: stealthMode ? "eye.slash" : "eye")
+                Button {
+                    showPortfolioSwitcher = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chart.pie.fill")
                             .font(.system(size: 9))
-                            .foregroundStyle(stealthMode ? .primary : .secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                        Text(portfolio.name)
+                            .font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .bold))
                     }
-                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
                 }
+                .buttonStyle(.plain)
                 .padding(.leading, 2)
             }
 
@@ -776,6 +760,21 @@ struct DashboardView: View {
                     .font(.system(size: 10, weight: .regular, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.1))
                     .tracking(1)
+
+                Button {
+                    stealthMode.toggle()
+                } label: {
+                    Image(systemName: stealthMode ? "eye.slash" : "eye")
+                        .font(.system(size: 9))
+                        .foregroundStyle(stealthMode ? .primary : .secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
         }
         .padding(.horizontal)
