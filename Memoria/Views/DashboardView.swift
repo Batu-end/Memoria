@@ -91,7 +91,7 @@ struct DashboardView: View {
             LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.11), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
         )
-        .task {
+        .task(id: portfolio.id) {
             await initializeDashboard()
         }
         .onReceive(refreshTimer) { _ in
@@ -737,7 +737,8 @@ struct DashboardView: View {
     // MARK: - Lifecycle Logic
     
     private func initializeDashboard() async {
-        // Reduced logic: Just sync the engine once on startup
+        liveQuotes = [:]
+        isDashboardReady = false
         accountingEngine.update(trades: trades, startingBalance: portfolio.startingBalance)
         
         await fetchLiveQuotes()
