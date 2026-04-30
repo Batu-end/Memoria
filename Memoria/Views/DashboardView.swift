@@ -742,6 +742,7 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, 2)
+                .padding(.top, 4)
             }
 
             Spacer()
