@@ -87,21 +87,21 @@ struct TradesListView: View {
                                 Button(role: .destructive) {
                                     tradeToDelete = trade
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Image(systemName: "trash")
                                 }
-                                
+
                                 if trade.status == .open {
                                     Button {
                                         tradeToScale = trade
                                     } label: {
-                                        Label("Manage", systemImage: "slider.horizontal.3")
+                                        Image(systemName: "slider.horizontal.3")
                                     }
                                     .tint(.orange)
-                                    
+
                                     Button {
                                         tradeToClose = trade
                                     } label: {
-                                        Label("Close", systemImage: "checkmark.circle.fill")
+                                        Image(systemName: "checkmark.circle.fill")
                                     }
                                     .tint(.blue)
                                 }
