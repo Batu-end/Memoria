@@ -119,9 +119,9 @@ struct CalendarView: View {
             Divider().frame(height: 30)
             statPill(label: "RED", value: "\(redDays)d", color: .red)
             Divider().frame(height: 30)
-            statPill(label: "BEST", value: bestDay > 0 ? "+$\(Int(bestDay))" : "--", color: .green)
+            statPill(label: "BEST", value: bestDay > 0 ? "+$\(Int(bestDay))" : "--", color: .green, isRedactable: true)
             Divider().frame(height: 30)
-            statPill(label: "WORST", value: worstDay < 0 ? "-$\(Int(abs(worstDay)))" : "--", color: .red)
+            statPill(label: "WORST", value: worstDay < 0 ? "-$\(Int(abs(worstDay)))" : "--", color: .red, isRedactable: true)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
@@ -131,15 +131,21 @@ struct CalendarView: View {
         .padding(.horizontal)
     }
 
-    private func statPill(label: String, value: String, color: Color) -> some View {
+    private func statPill(label: String, value: String, color: Color, isRedactable: Bool = false) -> some View {
         VStack(spacing: 2) {
             Text(label)
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.secondary)
                 .tracking(1.5)
-            Text(value)
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(color)
+            Group {
+                if isRedactable && value != "--" {
+                    Text(value).stealthable()
+                } else {
+                    Text(value)
+                }
+            }
+            .font(.system(size: 17, weight: .bold, design: .rounded))
+            .foregroundStyle(color)
         }
         .frame(maxWidth: .infinity)
     }
