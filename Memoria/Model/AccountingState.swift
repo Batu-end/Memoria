@@ -17,6 +17,8 @@ struct AccountingState {
     var avgLoss: Double = 0
     var maxDrawdown: Double = 0
     var equityCurve: [EquityDataPoint] = []
+    /// Realized P&L grouped by start-of-day (closed trades only). Key is midnight UTC of close date.
+    var dailyPnl: [Date: Double] = [:]
     
     nonisolated init() {}
 

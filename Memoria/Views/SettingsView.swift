@@ -53,8 +53,26 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
+                    NavigationLink {
+                        WatchlistView(portfolio: portfolio)
+                    } label: {
+                        Label {
+                            Text("Watchlist")
+                        } icon: {
+                            Image(systemName: "list.star").foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Market")
+                }
+
+                Section {
                     HStack {
-                        Label("Name", systemImage: "person.crop.circle.fill")
+                        Label {
+                            Text("Name")
+                        } icon: {
+                            Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
+                        }
                         TextField("", text: $traderName, prompt: Text("Enter your name"))
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.plain)
@@ -73,9 +91,14 @@ struct SettingsView: View {
                                 .tag(p)
                         }
                     } label: {
-                        Label("I am a...", systemImage: "theatermasks.fill")
+                        Label {
+                            Text("I am a...")
+                        } icon: {
+                            Image(systemName: "theatermasks.fill").foregroundStyle(.secondary)
+                        }
                     }
                     .pickerStyle(.menu)
+                    .tint(.primary)
                 } header: {
                     Text("Profile")
                 }
@@ -207,7 +230,7 @@ struct SettingsView: View {
                     Toggle(isOn: $showTickerLogos) {
                         #if os(macOS)
                         VStack(alignment: .leading, spacing: 2) {
-                            Label("Ticker logos", systemImage: "photo.circle")
+                            Label("Ticker logos", systemImage: "photo.on.rectangle.angled")
                             Text("Shows company logos next to trade rows.")
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
@@ -215,7 +238,7 @@ struct SettingsView: View {
                         }
                         #else
                         HStack(spacing: 14) {
-                            Image(systemName: "photo.circle")
+                            Image(systemName: "photo.on.rectangle.angled")
                                 .font(.system(size: 20))
                                 .foregroundStyle(.secondary)
                                 .frame(width: 30)
@@ -309,7 +332,7 @@ struct SettingsView: View {
                     LinearGradient(colors: [Color(red: 0.05, green: 0.05, blue: 0.06), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                         .ignoresSafeArea()
                 )
-                .navigationTitle("Settings")
+                .goldTitle("Settings")
                 .darkNavigationBar()
                 .task(id: portfolio.id) {
                     liveQuotes = [:]

@@ -1,6 +1,7 @@
 import XCTest
 @testable import Memoria
 
+@MainActor
 final class MathStressTests: XCTestCase {
     
     var engine: AccountingEngine!

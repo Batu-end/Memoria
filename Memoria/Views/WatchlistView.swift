@@ -49,8 +49,7 @@ struct WatchlistView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
+        ZStack {
                 LinearGradient(colors: [Color(red: 0.05, green: 0.05, blue: 0.06), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
 
@@ -81,57 +80,40 @@ struct WatchlistView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
-            .navigationTitle("Watchlist")
+            .goldTitle("Watchlist")
             .darkNavigationBar()
             .toolbar {
                 #if os(iOS)
-                ToolbarItem(placement: .topBarLeading) {
-                    if let lastRefresh = lastRefreshTime {
-                        Button {
-                            Task { await refreshQuotes() }
-                        } label: {
-                            HStack(spacing: 4) {
-                                if isRefreshing {
-                                    ProgressView().scaleEffect(0.6).frame(width: 10, height: 10)
-                                }
-                                Text(isRefreshing ? "Refreshing" : lastRefresh.formatted(.dateTime.hour().minute()))
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(.white.opacity(0.1), in: Capsule())
-                            .fixedSize()
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await refreshQuotes() }
+                    } label: {
+                        if isRefreshing {
+                            ProgressView().scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isRefreshing)
                     }
+                    .tint(.white)
+                    .disabled(isRefreshing)
                 }
                 #else
-                ToolbarItem(placement: .navigation) {
-                    if let lastRefresh = lastRefreshTime {
-                        Button {
-                            Task { await refreshQuotes() }
-                        } label: {
-                            HStack(spacing: 4) {
-                                if isRefreshing {
-                                    ProgressView().scaleEffect(0.6).frame(width: 10, height: 10)
-                                }
-                                Text(isRefreshing ? "Refreshing" : lastRefresh.formatted(.dateTime.hour().minute()))
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(.white.opacity(0.1), in: Capsule())
-                            .fixedSize()
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        Task { await refreshQuotes() }
+                    } label: {
+                        if isRefreshing {
+                            ProgressView().scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isRefreshing)
                     }
+                    .tint(.white)
+                    .disabled(isRefreshing)
+                    .help("Refresh prices")
                 }
                 #endif
-                
+
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
                         #if os(iOS)
@@ -143,6 +125,7 @@ struct WatchlistView: View {
                         Label("Add Symbol", systemImage: "plus")
                     }
                     .labelStyle(.titleAndIcon)
+                    .tint(.white)
                     .help("Add to Watchlist")
                 }
             }
@@ -191,7 +174,6 @@ struct WatchlistView: View {
                     Task { await refreshQuotes() }
                 }
             }
-        }
     }
 
     // MARK: - Data Fetching

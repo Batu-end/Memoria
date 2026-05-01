@@ -28,6 +28,7 @@ struct TradesListView: View {
     @State private var tradeToClose: Trade?
     @State private var tradeToScale: Trade?
     @State private var tradeToDelete: Trade?
+    @State private var isRefreshing = false
 
     private let filters = ["All", "Open", "Closed"]
     private let typeFilters = ["All", "Stock", "ETF"]
@@ -130,7 +131,7 @@ struct TradesListView: View {
                 }
                 #endif
             }
-            .navigationTitle("Trades")
+            .goldTitle("Trades")
             .darkNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -138,8 +139,73 @@ struct TradesListView: View {
                         Label("New Trade", systemImage: "plus")
                     }
                     .labelStyle(.titleAndIcon)
+                    .tint(.white)
                     .help("Add Trade")
                 }
+
+                #if os(iOS)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await refreshLivePrices() }
+                    } label: {
+                        if isRefreshing {
+                            ProgressView().scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .tint(.white)
+                    .disabled(isRefreshing)
+                }
+                #else
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        Task { await refreshLivePrices() }
+                    } label: {
+                        if isRefreshing {
+                            ProgressView().scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .tint(.white)
+                    .disabled(isRefreshing)
+                    .help("Refresh prices")
+                }
+                #endif
+
+                #if os(iOS)
+                ToolbarItem(placement: .topBarLeading) {
+                    let openCount = allTrades.filter { $0.status == .open }.count
+                    if openCount > 0 {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color(red: 0.92, green: 0.81, blue: 0.42))
+                                .frame(width: 5, height: 5)
+                            Text("\(openCount)")
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .fixedSize()
+                        }
+                    }
+                }
+                #else
+                ToolbarItem(placement: .navigation) {
+                    let openCount = allTrades.filter { $0.status == .open }.count
+                    if openCount > 0 {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color(red: 0.92, green: 0.81, blue: 0.42))
+                                .frame(width: 5, height: 5)
+                            Text("\(openCount)")
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .fixedSize()
+                        }
+                        .frame(minWidth: 48)
+                    }
+                }
+                #endif
             }
             .sheet(isPresented: $showAddTrade) {
                 AddTradeView(portfolio: portfolio)
@@ -264,6 +330,15 @@ struct TradesListView: View {
             Text("Tap + to log your first trade.")
         }
         .padding(.top, 60)
+    }
+
+    private func refreshLivePrices() async {
+        let tickers = allTrades.filter { $0.status == .open }.map { $0.ticker }
+        guard !tickers.isEmpty else { return }
+        isRefreshing = true
+        let quotes = await StockQuoteService.shared.fetchQuotes(for: Array(Set(tickers)))
+        accountingEngine.update(quotes: quotes)
+        isRefreshing = false
     }
 }
 
