@@ -11,9 +11,7 @@ struct CalendarView: View {
     @Query private var allTrades: [Trade]
     @State private var engine = AccountingEngine.shared
     @State private var selectedDay: Date? = nil
-
-    private let cellSize: CGFloat = 14
-    private let cellSpacing: CGFloat = 3
+    @State private var displayMonth: Date = Date()
 
     init(portfolio: Portfolio) {
         self.portfolio = portfolio
@@ -25,51 +23,43 @@ struct CalendarView: View {
         )
     }
 
-    // MARK: - Derived Data
+    // MARK: - Derived
 
     private let cal = Calendar.current
     private var dailyPnl: [Date: Double] { engine.portfolioState.dailyPnl }
-
-    private var gridStart: Date {
-        let firstClose = allTrades.compactMap { $0.dateClosed }.min()
-            ?? allTrades.map { $0.dateAdded }.min()
-            ?? Date()
-        let start = cal.startOfDay(for: firstClose)
-        let weekday = cal.component(.weekday, from: start)
-        let daysBack = weekday == 1 ? 6 : weekday - 2
-        return cal.date(byAdding: .day, value: -daysBack, to: start) ?? start
-    }
-
-    private var weeks: [[Date?]] {
-        let today = cal.startOfDay(for: Date())
-        var result: [[Date?]] = []
-        var cursor = gridStart
-        while cursor <= today {
-            var week: [Date?] = []
-            for _ in 0..<7 {
-                week.append(cursor <= today ? cursor : nil)
-                cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? cursor
-            }
-            result.append(week)
-        }
-        return result
-    }
-
-    private var maxAbsPnl: Double {
-        max(dailyPnl.values.map { abs($0) }.max() ?? 1, 1)
-    }
-
-    private func cellColor(for date: Date) -> Color {
-        guard let pnl = dailyPnl[date] else { return Color.white.opacity(0.07) }
-        if pnl == 0 { return Color.white.opacity(0.1) }
-        let intensity = 0.2 + (abs(pnl) / maxAbsPnl) * 0.8
-        return (pnl > 0 ? Color.green : Color.red).opacity(intensity)
-    }
 
     private var greenDays: Int { dailyPnl.values.filter { $0 > 0 }.count }
     private var redDays:   Int { dailyPnl.values.filter { $0 < 0 }.count }
     private var bestDay:  Double { dailyPnl.values.max() ?? 0 }
     private var worstDay: Double { dailyPnl.values.min() ?? 0 }
+    private var maxAbsPnl: Double { max(dailyPnl.values.map { abs($0) }.max() ?? 1, 1) }
+
+    private func monthStart(_ date: Date) -> Date {
+        cal.date(from: cal.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    private var monthDays: [Date?] {
+        let start = monthStart(displayMonth)
+        guard let range = cal.range(of: .day, in: .month, for: start) else { return [] }
+        let weekday = cal.component(.weekday, from: start)
+        let offset = weekday == 1 ? 6 : weekday - 2
+        var days: [Date?] = Array(repeating: nil, count: offset)
+        for i in range {
+            days.append(cal.date(byAdding: .day, value: i - 1, to: start))
+        }
+        while days.count % 7 != 0 { days.append(nil) }
+        return days
+    }
+
+    private func cellBackground(for date: Date) -> Color {
+        guard let pnl = dailyPnl[date], pnl != 0 else { return .clear }
+        let intensity = 0.15 + (abs(pnl) / maxAbsPnl) * 0.5
+        return (pnl > 0 ? Color.green : Color.red).opacity(intensity)
+    }
+
+    private var canGoForward: Bool {
+        monthStart(displayMonth) < monthStart(Date())
+    }
 
     // MARK: - Body
 
@@ -87,13 +77,12 @@ struct CalendarView: View {
                     ContentUnavailableView(
                         "No Closed Trades",
                         systemImage: "calendar",
-                        description: Text("Close a trade to see your trading heartbeat.")
+                        description: Text("Close a trade to see your trading calendar.")
                     )
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            statsBar
-                            gridCard
+                        VStack(spacing: 16) {
+                            monthCard
                             if let day = selectedDay {
                                 dayDetailCard(for: day)
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -148,60 +137,74 @@ struct CalendarView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Calendar Grid
+    // MARK: - Month Card
 
-    private var gridCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("TRADING ACTIVITY")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(.secondary)
-                .tracking(1.5)
-                .padding(.horizontal)
-
-            HStack(alignment: .top, spacing: 6) {
-                // Fixed day-of-week labels
-                VStack(spacing: cellSpacing) {
-                    Color.clear.frame(height: 10) // spacer for month label row
-                    ForEach(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], id: \.self) { label in
-                        Text(label)
-                            .font(.system(size: 7, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.tertiary)
-                            .frame(width: 26, height: cellSize, alignment: .trailing)
+    private var monthCard: some View {
+        VStack(spacing: 10) {
+            // Navigation header
+            HStack {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        displayMonth = cal.date(byAdding: .month, value: -1, to: displayMonth) ?? displayMonth
+                        selectedDay = nil
                     }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(.white.opacity(0.07))
+                        .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
 
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(alignment: .top, spacing: cellSpacing) {
-                            ForEach(Array(weeks.enumerated()), id: \.offset) { idx, week in
-                                VStack(spacing: cellSpacing) {
-                                    Text(monthLabel(weekIndex: idx, week: week))
-                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(.secondary)
-                                        .frame(height: 10)
+                Spacer()
 
-                                    ForEach(0..<7, id: \.self) { di in
-                                        if let date = week[di] {
-                                            dayCell(for: date)
-                                        } else {
-                                            Color.clear.frame(width: cellSize, height: cellSize)
-                                        }
-                                    }
-                                }
-                                .id(idx)
-                            }
-                        }
-                        .padding(.trailing, 16)
+                Text(displayMonth, format: .dateTime.month(.wide).year())
+                    .font(.system(size: 15, weight: .bold))
+
+                Spacer()
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        displayMonth = cal.date(byAdding: .month, value: 1, to: displayMonth) ?? displayMonth
+                        selectedDay = nil
                     }
-                    .onAppear {
-                        proxy.scrollTo(max(weeks.count - 1, 0), anchor: .trailing)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(canGoForward ? .secondary : .quaternary)
+                        .frame(width: 28, height: 28)
+                        .background(.white.opacity(canGoForward ? 0.07 : 0.02))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canGoForward)
+            }
+            .padding(.horizontal, 4)
+
+            // Weekday headers
+            HStack(spacing: 0) {
+                ForEach(Array(["M", "T", "W", "T", "F", "S", "S"].enumerated()), id: \.offset) { _, d in
+                    Text(d)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.quaternary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            // Day grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 7), spacing: 5) {
+                ForEach(Array(monthDays.enumerated()), id: \.offset) { _, date in
+                    if let date {
+                        dayCell(for: date)
+                    } else {
+                        Color.clear.frame(minHeight: 52)
                     }
                 }
             }
-            .padding(.leading)
-            .padding(.bottom, 8)
         }
-        .padding(.vertical, 12)
+        .padding(14)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
@@ -209,27 +212,43 @@ struct CalendarView: View {
     }
 
     private func dayCell(for date: Date) -> some View {
+        let pnl = dailyPnl[date]
         let isSelected = selectedDay == date
-        return RoundedRectangle(cornerRadius: 2)
-            .fill(cellColor(for: date))
-            .frame(width: cellSize, height: cellSize)
-            .overlay(
-                RoundedRectangle(cornerRadius: 2)
-                    .stroke(isSelected ? Color.white.opacity(0.9) : Color.clear, lineWidth: 1)
-            )
-            .scaleEffect(isSelected ? 1.25 : 1.0)
-            .onTapGesture {
-                withAnimation(.spring(response: 0.25)) {
-                    selectedDay = selectedDay == date ? nil : date
+        let isToday = cal.isDateInToday(date)
+
+        return Button {
+            guard pnl != nil else { return }
+            withAnimation(.spring(response: 0.25)) {
+                selectedDay = selectedDay == date ? nil : date
+            }
+        } label: {
+            VStack(alignment: .center, spacing: 3) {
+                Text("\(cal.component(.day, from: date))")
+                    .font(.system(size: 11, weight: isToday ? .bold : .regular, design: .monospaced))
+                    .foregroundStyle(isToday ? Color(red: 0.92, green: 0.81, blue: 0.42) : .secondary)
+
+                if let pnl {
+                    Text(pnl >= 0 ? "+\(Int(pnl))" : "\(Int(pnl))")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(pnl >= 0 ? .green : .red)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                } else {
+                    Spacer()
                 }
             }
-    }
-
-    private func monthLabel(weekIndex: Int, week: [Date?]) -> String {
-        guard let first = week.compactMap({ $0 }).first else { return "" }
-        let day = cal.component(.day, from: first)
-        guard weekIndex == 0 || day <= 7 else { return "" }
-        return first.formatted(.dateTime.month(.abbreviated)).uppercased()
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .padding(.vertical, 5)
+            .background(cellBackground(for: date))
+            .background(Color.white.opacity(0.03))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color.white.opacity(0.5) : Color.white.opacity(0.04), lineWidth: isSelected ? 1.5 : 0.5)
+            )
+            .scaleEffect(isSelected ? 1.03 : 1.0)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Day Detail Card
