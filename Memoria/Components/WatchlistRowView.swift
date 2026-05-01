@@ -129,6 +129,17 @@ struct WatchlistRowView: View {
                         .padding(.vertical, 2)
                         .background(accentColor.opacity(0.12), in: Capsule())
                 }
+
+                if let ahPrice = item.extendedHoursPrice,
+                   let state = item.marketState, state != "REGULAR" {
+                    HStack(spacing: 3) {
+                        Image(systemName: state.hasPrefix("POST") ? "moon.stars.fill" : "sunrise.fill")
+                            .font(.system(size: 8))
+                        Text(ahPrice, format: .currency(code: "USD"))
+                            .font(.system(size: 10).monospacedDigit())
+                    }
+                    .foregroundStyle(.secondary)
+                }
             }
             #if os(iOS)
             .frame(width: 75, alignment: .trailing)

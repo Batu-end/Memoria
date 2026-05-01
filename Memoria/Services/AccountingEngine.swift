@@ -70,7 +70,7 @@ class AccountingEngine {
     
     /// Internal method for testing to simulate price moves.
     func testOnly_setQuote(ticker: String, price: Double) {
-        let quote = StockQuote(symbol: ticker.uppercased(), currentPrice: price, previousClose: price, change: 0, changePercent: 0, volume: nil, marketCap: nil)
+        let quote = StockQuote(symbol: ticker.uppercased(), currentPrice: price, previousClose: price, change: 0, changePercent: 0, volume: nil, marketCap: nil, preMarketPrice: nil, postMarketPrice: nil, marketState: nil)
         self.quotes[ticker.uppercased()] = quote
     }
     
