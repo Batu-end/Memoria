@@ -28,11 +28,17 @@ struct CalendarView: View {
     private let cal = Calendar.current
     private var dailyPnl: [Date: Double] { engine.portfolioState.dailyPnl }
 
-    private var greenDays: Int { dailyPnl.values.filter { $0 > 0 }.count }
-    private var redDays:   Int { dailyPnl.values.filter { $0 < 0 }.count }
-    private var bestDay:  Double { dailyPnl.values.max() ?? 0 }
-    private var worstDay: Double { dailyPnl.values.min() ?? 0 }
-    private var maxAbsPnl: Double { max(dailyPnl.values.map { abs($0) }.max() ?? 1, 1) }
+    private var monthlyPnl: [Date: Double] {
+        let start = monthStart(displayMonth)
+        guard let end = cal.date(byAdding: .month, value: 1, to: start) else { return [:] }
+        return dailyPnl.filter { $0.key >= start && $0.key < end }
+    }
+
+    private var greenDays: Int { monthlyPnl.values.filter { $0 > 0 }.count }
+    private var redDays:   Int { monthlyPnl.values.filter { $0 < 0 }.count }
+    private var bestDay:  Double { monthlyPnl.values.max() ?? 0 }
+    private var worstDay: Double { monthlyPnl.values.min() ?? 0 }
+    private var maxAbsPnl: Double { max(monthlyPnl.values.map { abs($0) }.max() ?? 1, 1) }
 
     private func monthStart(_ date: Date) -> Date {
         cal.date(from: cal.dateComponents([.year, .month], from: date)) ?? date
@@ -82,6 +88,7 @@ struct CalendarView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
+                            statsBar
                             monthCard
                             if let day = selectedDay {
                                 dayDetailCard(for: day)
@@ -228,11 +235,12 @@ struct CalendarView: View {
                     .foregroundStyle(isToday ? Color(red: 0.92, green: 0.81, blue: 0.42) : .secondary)
 
                 if let pnl {
-                    Text(pnl >= 0 ? "+\(Int(pnl))" : "\(Int(pnl))")
+                    Text(pnl >= 0 ? "+$\(Int(pnl))" : "-$\(Int(abs(pnl)))")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(pnl >= 0 ? .green : .red)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
+                        .stealthable()
                 } else {
                     Spacer()
                 }
@@ -280,9 +288,10 @@ struct CalendarView: View {
             }
 
             if let pnl {
-                Text(pnl >= 0 ? "+\(pnl, specifier: "%.2f")" : "\(pnl, specifier: "%.2f")")
+                Text((pnl >= 0 ? "+" : "") + pnl.formatted(.currency(code: "USD")))
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(pnl >= 0 ? Color.green : Color.red)
+                    .stealthable()
             }
 
             if !tradesOnDay.isEmpty {
@@ -301,9 +310,10 @@ struct CalendarView: View {
                                 .clipShape(Capsule())
                             Spacer()
                             if let tradePnl = engine.tradeAccounting[trade.id]?.totalPnl {
-                                Text(tradePnl >= 0 ? "+\(tradePnl, specifier: "%.2f")" : "\(tradePnl, specifier: "%.2f")")
+                                Text((tradePnl >= 0 ? "+" : "") + tradePnl.formatted(.currency(code: "USD")))
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundStyle(tradePnl >= 0 ? Color.green : Color.red)
+                                    .stealthable()
                             }
                         }
                     }
