@@ -11,6 +11,11 @@ struct CapturedExecution {
     let type: ExecutionType
 }
 
+struct CapturedCapitalEvent {
+    let date: Date
+    let amount: Double
+}
+
 struct CapturedTrade {
     let id: UUID
     let ticker: String
@@ -55,6 +60,7 @@ class AccountingEngine {
     private var trades: [Trade] = []
     private var quotes: [String: StockQuote] = [:]
     private var startingBalance: Double = 0.0
+    private var capturedCapitalEvents: [CapturedCapitalEvent] = []
 
     private var calculationTask: Task<Void, Never>?
 
@@ -65,7 +71,8 @@ class AccountingEngine {
         self.trades = []
         self.tradeAccounting = [:]
         self.portfolioState = .empty
-        self.quotes = [:] // Clear market data for test isolation
+        self.quotes = [:]
+        self.capturedCapitalEvents = []
     }
     
     /// Internal method for testing to simulate price moves.
@@ -76,9 +83,10 @@ class AccountingEngine {
     
     // MARK: - Input updates
     
-    func update(trades: [Trade], startingBalance: Double) {
+    func update(trades: [Trade], startingBalance: Double, capitalEvents: [CapitalEvent] = []) {
         self.trades = trades
         self.startingBalance = startingBalance
+        self.capturedCapitalEvents = capitalEvents.map { CapturedCapitalEvent(date: $0.date, amount: $0.amount) }
         recalculate()
     }
 
@@ -100,6 +108,7 @@ class AccountingEngine {
         let capturedTrades = self.trades.map { CapturedTrade($0) }
         let currentQuotes = self.quotes
         let balance = self.startingBalance
+        let capturedEvents = self.capturedCapitalEvents
         
         // 2. Cancel any pending calculation
         calculationTask?.cancel()
@@ -249,6 +258,23 @@ class AccountingEngine {
                 if dd > maxDD { maxDD = dd }
             }
             newState.maxDrawdown = maxDD
+
+            // TWR computation
+            if balance > 0 {
+                let curve = newState.equityCurve
+                let sortedEvents = capturedEvents.sorted { $0.date < $1.date }
+                var twrFactor = 1.0
+                var periodStart = balance
+                for event in sortedEvents {
+                    let valueAtEvent = curve.last { $0.date <= event.date }?.balance ?? periodStart
+                    if periodStart > 0 { twrFactor *= valueAtEvent / periodStart }
+                    periodStart = valueAtEvent + event.amount
+                }
+                if let finalBalance = curve.last?.balance, periodStart > 0 {
+                    twrFactor *= finalBalance / periodStart
+                }
+                newState.twr = twrFactor - 1
+            }
 
             // Daily P&L aggregator (closed trades, grouped by start-of-day)
             var dailyPnl: [Date: Double] = [:]
