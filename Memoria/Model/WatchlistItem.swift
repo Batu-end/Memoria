@@ -24,8 +24,6 @@ final class WatchlistItem {
     var volume: Int?
     var marketCap: Double?
     var lastUpdated: Date?
-    var extendedHoursPrice: Double?
-    var marketState: String?
     
     var portfolio: Portfolio?
 
@@ -45,8 +43,6 @@ final class WatchlistItem {
         self.volume = quote.volume
         self.marketCap = quote.marketCap
         self.lastUpdated = Date()
-        self.marketState = quote.marketState
-        self.extendedHoursPrice = quote.postMarketPrice ?? quote.preMarketPrice
         
         // If no reference price was set, use the first fetched price
         if self.priceAtAdd == nil {
