@@ -249,7 +249,18 @@ class AccountingEngine {
                 if dd > maxDD { maxDD = dd }
             }
             newState.maxDrawdown = maxDD
-            
+
+            // Daily P&L aggregator (closed trades, grouped by start-of-day)
+            var dailyPnl: [Date: Double] = [:]
+            let cal = Calendar.current
+            for trade in closedTrades {
+                if let pnl = newTradeMath[trade.id]?.totalPnl {
+                    let day = cal.startOfDay(for: trade.dateClosed ?? trade.dateAdded)
+                    dailyPnl[day, default: 0] += pnl
+                }
+            }
+            newState.dailyPnl = dailyPnl
+
             if Task.isCancelled { return }
 
             // 4. Update state on Main Thread

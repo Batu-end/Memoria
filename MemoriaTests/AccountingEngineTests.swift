@@ -29,6 +29,7 @@ private extension AccountingEngineTests {
 
 // MARK: - Test Suite
 
+@MainActor
 final class AccountingEngineTests: XCTestCase {
 
     var engine: AccountingEngine!
@@ -46,7 +47,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.vwap, 150.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.vwap ?? 0, 150.0, accuracy: 0.0001)
     }
 
     func testVwap_scaleIn_twoFills() async {
@@ -55,8 +56,8 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.vwap, 110.0, accuracy: 0.0001)
-        XCTAssertEqual(m?.effectiveQuantity, 20.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.vwap ?? 0, 110.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.effectiveQuantity ?? 0, 20.0, accuracy: 0.0001)
     }
 
     func testVwap_scaleIn_unequalFills() async {
@@ -65,7 +66,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.vwap, 130.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.vwap ?? 0, 130.0, accuracy: 0.0001)
     }
 
     func testVwap_partialSell_doesNotAffectVwap() async {
@@ -74,8 +75,8 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.vwap, 110.0, accuracy: 0.0001, "VWAP must stay 110 regardless of partial sells")
-        XCTAssertEqual(m?.effectiveQuantity, 15.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.vwap ?? 0, 110.0, accuracy: 0.0001, "VWAP must stay 110 regardless of partial sells")
+        XCTAssertEqual(m?.effectiveQuantity ?? 0, 15.0, accuracy: 0.0001)
     }
 
     // MARK: Realized P&L — Long
@@ -86,8 +87,8 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.realizedPnl, 100.0, accuracy: 0.001)
-        XCTAssertEqual(m?.totalPnl, 100.0, accuracy: 0.001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, 100.0, accuracy: 0.001)
+        XCTAssertEqual(m?.totalPnl ?? 0, 100.0, accuracy: 0.001)
         XCTAssertTrue(m?.winStatus == true)
     }
 
@@ -97,7 +98,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.realizedPnl, -100.0, accuracy: 0.001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, -100.0, accuracy: 0.001)
         XCTAssertTrue(m?.winStatus == false)
     }
 
@@ -108,9 +109,9 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.vwap, 11.0, accuracy: 0.0001)
-        XCTAssertEqual(m?.realizedPnl, 400.0, accuracy: 0.001)
-        XCTAssertEqual(m?.effectiveQuantity, 0.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.vwap ?? 0, 11.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, 400.0, accuracy: 0.001)
+        XCTAssertEqual(m?.effectiveQuantity ?? 0, 0.0, accuracy: 0.0001)
     }
 
     func testRealized_longPartialClose() async {
@@ -119,8 +120,8 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.realizedPnl, 100.0, accuracy: 0.001)
-        XCTAssertEqual(m?.effectiveQuantity, 5.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, 100.0, accuracy: 0.001)
+        XCTAssertEqual(m?.effectiveQuantity ?? 0, 5.0, accuracy: 0.0001)
     }
 
     func testRealized_longMultipleSells() async {
@@ -129,7 +130,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.realizedPnl, -20.0, accuracy: 0.001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, -20.0, accuracy: 0.001)
         XCTAssertTrue(m?.winStatus == false)
     }
 
@@ -141,7 +142,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.realizedPnl, 200.0, accuracy: 0.001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, 200.0, accuracy: 0.001)
         XCTAssertTrue(m?.winStatus == true)
     }
 
@@ -151,7 +152,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.realizedPnl, -200.0, accuracy: 0.001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, -200.0, accuracy: 0.001)
         XCTAssertTrue(m?.winStatus == false)
     }
 
@@ -162,8 +163,8 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.vwap, 190.0, accuracy: 0.0001)
-        XCTAssertEqual(m?.realizedPnl, 600.0, accuracy: 0.001)
+        XCTAssertEqual(m?.vwap ?? 0, 190.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, 600.0, accuracy: 0.001)
     }
 
     // MARK: Unrealized P&L (requires injected quote)
@@ -175,8 +176,8 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.unrealizedPnl, 100.0, accuracy: 0.001)
-        XCTAssertEqual(m?.totalPnl, 100.0, accuracy: 0.001)
+        XCTAssertEqual(m?.unrealizedPnl ?? 0, 100.0, accuracy: 0.001)
+        XCTAssertEqual(m?.totalPnl ?? 0, 100.0, accuracy: 0.001)
     }
 
     func testUnrealized_long_loss() async {
@@ -185,7 +186,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.unrealizedPnl, -150.0, accuracy: 0.001)
+        XCTAssertEqual(m?.unrealizedPnl ?? 0, -150.0, accuracy: 0.001)
     }
 
     func testUnrealized_short_profit() async {
@@ -195,7 +196,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.unrealizedPnl, 100.0, accuracy: 0.001)
+        XCTAssertEqual(m?.unrealizedPnl ?? 0, 100.0, accuracy: 0.001)
     }
 
     func testUnrealized_noQuote_isZero() async {
@@ -204,7 +205,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.unrealizedPnl, 0.0, accuracy: 0.0001)
+        XCTAssertEqual(m?.unrealizedPnl ?? 0, 0.0, accuracy: 0.0001)
     }
 
     // MARK: Open trade — partial sell + live unrealized
@@ -219,9 +220,9 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.realizedPnl, 100.0, accuracy: 0.001)
-        XCTAssertEqual(m?.unrealizedPnl, 50.0, accuracy: 0.001)
-        XCTAssertEqual(m?.totalPnl, 150.0, accuracy: 0.001)
+        XCTAssertEqual(m?.realizedPnl ?? 0, 100.0, accuracy: 0.001)
+        XCTAssertEqual(m?.unrealizedPnl ?? 0, 50.0, accuracy: 0.001)
+        XCTAssertEqual(m?.totalPnl ?? 0, 150.0, accuracy: 0.001)
     }
 
     // MARK: Position Size
@@ -232,7 +233,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.positionSize, 5_000.0, accuracy: 0.01)
+        XCTAssertEqual(m?.positionSize ?? 0, 5_000.0, accuracy: 0.01)
     }
 
     func testPositionSize_afterScaleIn() async {
@@ -241,7 +242,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.positionSize, 2_200.0, accuracy: 0.01)
+        XCTAssertEqual(m?.positionSize ?? 0, 2_200.0, accuracy: 0.01)
     }
 
     func testPositionSize_afterPartialSell() async {
@@ -250,7 +251,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.positionSize, 500.0, accuracy: 0.01)
+        XCTAssertEqual(m?.positionSize ?? 0, 500.0, accuracy: 0.01)
     }
 
     // MARK: Percent Return
@@ -261,7 +262,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.percentReturn, 10.0, accuracy: 0.001)
+        XCTAssertEqual(m?.percentReturn ?? 0, 10.0, accuracy: 0.001)
     }
 
     func testPercentReturn_closedLoss() async {
@@ -270,7 +271,7 @@ final class AccountingEngineTests: XCTestCase {
         engine.update(trades: [t], startingBalance: 10_000)
         await settle()
         let m = engine.mathForTrade(t.id)
-        XCTAssertEqual(m?.percentReturn, -20.0, accuracy: 0.001)
+        XCTAssertEqual(m?.percentReturn ?? 0, -20.0, accuracy: 0.001)
     }
 
     // MARK: Win / Loss Status
@@ -369,7 +370,7 @@ final class AccountingEngineTests: XCTestCase {
         await settle()
         let m = engine.mathForTrade(t.id)
         XCTAssertNotNil(m)
-        XCTAssertEqual(m?.effectiveQuantity, 0.0)
+        XCTAssertEqual(m?.effectiveQuantity ?? 0, 0.0)
         XCTAssertEqual(m?.totalPnl ?? 0.0, 0.0, accuracy: 0.0001)
     }
 
@@ -390,8 +391,8 @@ final class AccountingEngineTests: XCTestCase {
         let t2 = makeLong("AAPL", buys: [(100, 10)])                                      // separate open trade
         engine.update(trades: [t1, t2], startingBalance: 10_000)
         await settle()
-        XCTAssertEqual(engine.mathForTrade(t1.id)?.totalPnl, 100.0, accuracy: 0.001)
-        XCTAssertEqual(engine.mathForTrade(t2.id)?.realizedPnl, 0.0, accuracy: 0.001)
+        XCTAssertEqual(engine.mathForTrade(t1.id)?.totalPnl ?? 0, 100.0, accuracy: 0.001)
+        XCTAssertEqual(engine.mathForTrade(t2.id)?.realizedPnl ?? 0, 0.0, accuracy: 0.001)
     }
 
     func testEdge_highFrequencyPartialFills() async {
@@ -416,12 +417,90 @@ final class AccountingEngineTests: XCTestCase {
     func testMaxDrawdown() async {
         // Win $1000 (balance peaks at 2000), then lose $500 (balance 1500)
         // DD = (2000 - 1500) / 2000 = 25%
+        // dateClosed is set explicitly so equity curve order is deterministic regardless of test timing
+        let cal = Calendar.current
+        let day1 = cal.startOfDay(for: Date().addingTimeInterval(-86400))
+        let day2 = cal.startOfDay(for: Date())
+
         let win = makeLong("W", buys: [(100, 10)], sells: [(200, 10)], status: .closed)
+        win.dateClosed = day1
+
         let loss = makeLong("L", buys: [(100, 10)], sells: [(50, 10)], status: .closed)
-        // Dates must be ordered for equity curve
-        loss.executions.forEach { $0.date = Date().addingTimeInterval(3600) }
+        loss.dateClosed = day2
+
         engine.update(trades: [win, loss], startingBalance: 1_000)
         await settle()
         XCTAssertEqual(engine.portfolioState.maxDrawdown, 25.0, accuracy: 0.1)
+    }
+
+    func testDepositResilience() async {
+        // A cash deposit must not alter the P&L of any existing trade.
+        // Before deposit: buy 10 @ $100, sell 10 @ $110 → realized +$100, netLiq $10,100
+        let t = makeLong("AAPL", buys: [(100, 10)], sells: [(110, 10)], status: .closed)
+        engine.update(trades: [t], startingBalance: 10_000)
+        await settle()
+
+        XCTAssertEqual(engine.mathForTrade(t.id)?.totalPnl ?? 0, 100.0, accuracy: 0.001)
+        XCTAssertEqual(engine.portfolioState.netLiquidity, 10_100.0, accuracy: 0.001)
+
+        // Simulate $5,000 deposit — only startingBalance changes, trades are unchanged
+        engine.update(trades: [t], startingBalance: 15_000)
+        await settle()
+
+        XCTAssertEqual(engine.mathForTrade(t.id)?.totalPnl ?? 0, 100.0, accuracy: 0.001,
+                       "Trade P&L must be unaffected by a capital deposit")
+        XCTAssertEqual(engine.portfolioState.netLiquidity, 15_100.0, accuracy: 0.001,
+                       "Net liquidity must reflect the new balance plus existing P&L")
+    }
+
+    // MARK: Daily P&L Aggregator
+
+    func testDailyPnl_singleTrade() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        let t = makeLong("DAY1", buys: [(100, 10)], sells: [(110, 10)], status: .closed)
+        t.dateClosed = today
+        engine.update(trades: [t], startingBalance: 10_000)
+        await settle()
+        XCTAssertEqual(engine.portfolioState.dailyPnl[today] ?? 0, 100.0, accuracy: 0.001)
+    }
+
+    func testDailyPnl_multipleTradesSameDay_summed() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        let t1 = makeLong("D1", buys: [(100, 10)], sells: [(110, 10)], status: .closed) // +100
+        let t2 = makeLong("D2", buys: [(200, 5)],  sells: [(180, 5)],  status: .closed) // -100
+        t1.dateClosed = today
+        t2.dateClosed = today
+        engine.update(trades: [t1, t2], startingBalance: 10_000)
+        await settle()
+        XCTAssertEqual(engine.portfolioState.dailyPnl[today] ?? 0, 0.0, accuracy: 0.001,
+                       "Two trades on the same day should net to a single value")
+    }
+
+    func testDailyPnl_separateDays_separateKeys() async {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.startOfDay(for: Date().addingTimeInterval(-86400))
+        let t1 = makeLong("DD1", buys: [(100, 10)], sells: [(110, 10)], status: .closed) // +100 today
+        let t2 = makeLong("DD2", buys: [(100, 10)], sells: [(90, 10)],  status: .closed) // -100 yesterday
+        t1.dateClosed = today
+        t2.dateClosed = yesterday
+        engine.update(trades: [t1, t2], startingBalance: 10_000)
+        await settle()
+        let daily = engine.portfolioState.dailyPnl
+        XCTAssertEqual(daily[today] ?? 0,     100.0,  accuracy: 0.001)
+        XCTAssertEqual(daily[yesterday] ?? 0, -100.0, accuracy: 0.001)
+        XCTAssertEqual(daily.count, 2)
+    }
+
+    func testDailyPnl_openTrades_excluded() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        let open   = makeLong("OPEN", buys: [(100, 10)])                                 // open — should not appear
+        let closed = makeLong("CLSD", buys: [(100, 10)], sells: [(120, 10)], status: .closed) // +200
+        closed.dateClosed = today
+        engine.update(trades: [open, closed], startingBalance: 10_000)
+        await settle()
+        let daily = engine.portfolioState.dailyPnl
+        XCTAssertEqual(daily.count, 1, "Open trades must not appear in dailyPnl")
+        XCTAssertEqual(daily[today] ?? 0, 200.0, accuracy: 0.001)
     }
 }

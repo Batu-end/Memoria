@@ -10,7 +10,9 @@ struct TradeRowView: View {
 
     @AppStorage("showTickerLogos", store: .app) private var showTickerLogos: Bool = true
     @State private var dotOpacity: Double = 0.2
-    @State private var shimmerX: CGFloat = -600
+    @State private var shimmerX: CGFloat = -1000
+    @State private var rowWidth: CGFloat = 0
+    @State private var isHovered: Bool = false
 
     var math: TradeAccounting? {
         engine.tradeAccounting[trade.id]
@@ -100,6 +102,10 @@ struct TradeRowView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
         .background(.ultraThinMaterial)
+        .background(Color.white.opacity(isHovered ? 0.04 : 0))
+        #if os(macOS)
+        .onHover { isHovered = $0 }
+        #endif
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(accentColor)
@@ -120,7 +126,7 @@ struct TradeRowView: View {
                             endPoint: .trailing
                         )
                     )
-                    .frame(width: 400)
+                    .frame(width: rowWidth + 200)
                     .rotationEffect(.degrees(15))
                     .offset(x: shimmerX)
                     .blendMode(.overlay)
@@ -128,13 +134,20 @@ struct TradeRowView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
+        .background(GeometryReader { geo in
+            Color.clear.onAppear { rowWidth = geo.size.width }
+        })
         .onAppear {
             guard trade.status == .open else { return }
             withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
                 dotOpacity = 1.0
             }
+        }
+        .onChange(of: rowWidth) { _, width in
+            guard trade.status == .open, width > 0 else { return }
+            shimmerX = -(width + 200)
             withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
-                shimmerX = 800
+                shimmerX = width + 200
             }
         }
     }

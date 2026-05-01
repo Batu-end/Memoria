@@ -40,6 +40,7 @@ struct MemoriaApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(.dark)
+                .tint(Color(red: 0.92, green: 0.81, blue: 0.42))
                 .task { bootstrapPortfolios() }
         }
         .modelContainer(sharedModelContainer)

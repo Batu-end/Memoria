@@ -129,6 +129,7 @@ struct WatchlistRowView: View {
                         .padding(.vertical, 2)
                         .background(accentColor.opacity(0.12), in: Capsule())
                 }
+
             }
             #if os(iOS)
             .frame(width: 75, alignment: .trailing)

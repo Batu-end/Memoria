@@ -187,7 +187,7 @@ struct AnalyticsView: View {
                     }
                 }
             }
-            .navigationTitle("Analytics")
+            .goldTitle("Stats")
             .darkNavigationBar()
         }
     }

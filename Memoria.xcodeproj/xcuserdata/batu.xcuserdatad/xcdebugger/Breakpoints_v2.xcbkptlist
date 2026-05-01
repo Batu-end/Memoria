@@ -27,51 +27,9 @@
             startingLineNumber = "92"
             endingLineNumber = "92"
             landmarkName = "body"
-            landmarkType = "24">
-            <Locations>
-               <Location
-                  uuid = "E277F064-1A14-4B9A-ABB3-683E58DB414B - b59aa7e2e4933af9"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #7 (Memoria.BenchmarkTimeframe, Memoria.BenchmarkTimeframe) -&gt; () in Memoria.DashboardView.body.getter : some"
-                  moduleName = "Memoria.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/batu/Desktop/Memoria/Memoria/Memoria/Views/DashboardView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "92"
-                  endingLineNumber = "92">
-               </Location>
-               <Location
-                  uuid = "E277F064-1A14-4B9A-ABB3-683E58DB414B - dd91a2b4ba9fed88"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Memoria.DashboardView.body.getter : some"
-                  moduleName = "Memoria.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/batu/Desktop/Memoria/Memoria/Memoria/Views/DashboardView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "92"
-                  endingLineNumber = "92">
-               </Location>
-               <Location
-                  uuid = "E277F064-1A14-4B9A-ABB3-683E58DB414B - 37601cb674d03b12"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #4 (Swift.Array&lt;Memoria.Trade&gt;, Swift.Array&lt;Memoria.Trade&gt;) -&gt; () in Memoria.DashboardView.body.getter : some"
-                  moduleName = "Memoria.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/batu/Desktop/Memoria/Memoria/Memoria/Views/DashboardView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "92"
-                  endingLineNumber = "92">
-               </Location>
-            </Locations>
+            landmarkType = "24"
+            scope = "0"
+            stopOnStyle = "0">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
