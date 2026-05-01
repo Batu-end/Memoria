@@ -413,7 +413,7 @@ struct DashboardView: View {
                     title: "TWR",
                     value: twr == 0 ? "—" : String(format: "%+.2f%%", twr * 100),
                     color: twr >= 0 ? .green : .red,
-                    hideable: true
+                    hideable: false
                 )
             }
 
