@@ -260,19 +260,40 @@ class AccountingEngine {
             newState.maxDrawdown = maxDD
 
             // TWR computation
-            if balance > 0 {
-                let curve = newState.equityCurve
+            // originalBalance = the starting capital before any mid-journey deposits/withdrawals.
+            // Each capital event shifts `balance` by its amount, so we subtract them all back.
+            let originalBalance = balance - capturedEvents.reduce(0) { $0 + $1.amount }
+            if originalBalance > 0 {
+                let tradePnLs = closedTrades.compactMap { trade -> (Date, Double)? in
+                    guard let pnl = newTradeMath[trade.id]?.totalPnl else { return nil }
+                    return (trade.dateClosed ?? trade.dateAdded, pnl)
+                }.sorted { $0.0 < $1.0 }
+
                 let sortedEvents = capturedEvents.sorted { $0.date < $1.date }
                 var twrFactor = 1.0
-                var periodStart = balance
+                var runningPnl = 0.0
+                var capitalAccumulated = 0.0
+                var tradeIdx = 0
+                var periodStart = originalBalance
+
                 for event in sortedEvents {
-                    let valueAtEvent = curve.last { $0.date <= event.date }?.balance ?? periodStart
-                    if periodStart > 0 { twrFactor *= valueAtEvent / periodStart }
-                    periodStart = valueAtEvent + event.amount
+                    while tradeIdx < tradePnLs.count && tradePnLs[tradeIdx].0 <= event.date {
+                        runningPnl += tradePnLs[tradeIdx].1
+                        tradeIdx += 1
+                    }
+                    let valueBeforeEvent = originalBalance + runningPnl + capitalAccumulated
+                    if periodStart > 0 { twrFactor *= valueBeforeEvent / periodStart }
+                    capitalAccumulated += event.amount
+                    periodStart = valueBeforeEvent + event.amount
                 }
-                if let finalBalance = curve.last?.balance, periodStart > 0 {
-                    twrFactor *= finalBalance / periodStart
+
+                while tradeIdx < tradePnLs.count {
+                    runningPnl += tradePnLs[tradeIdx].1
+                    tradeIdx += 1
                 }
+                let finalValue = originalBalance + runningPnl + capitalAccumulated
+                if periodStart > 0 { twrFactor *= finalValue / periodStart }
+
                 newState.twr = twrFactor - 1
             }
 

@@ -25,6 +25,12 @@ private extension AccountingEngineTests {
         for b in buys { t.executions.append(Execution(price: b.price, quantity: b.qty, type: .buy)) }
         return t
     }
+
+    func makeDay(_ year: Int, _ month: Int, _ day: Int) -> Date {
+        var c = DateComponents()
+        c.year = year; c.month = month; c.day = day
+        return Calendar.current.date(from: c)!
+    }
 }
 
 // MARK: - Test Suite
@@ -418,9 +424,8 @@ final class AccountingEngineTests: XCTestCase {
         // Win $1000 (balance peaks at 2000), then lose $500 (balance 1500)
         // DD = (2000 - 1500) / 2000 = 25%
         // dateClosed is set explicitly so equity curve order is deterministic regardless of test timing
-        let cal = Calendar.current
-        let day1 = cal.startOfDay(for: Date().addingTimeInterval(-86400))
-        let day2 = cal.startOfDay(for: Date())
+        let day1 = makeDay(2025, 1, 14)
+        let day2 = makeDay(2025, 1, 15)
 
         let win = makeLong("W", buys: [(100, 10)], sells: [(200, 10)], status: .closed)
         win.dateClosed = day1
@@ -456,7 +461,7 @@ final class AccountingEngineTests: XCTestCase {
     // MARK: Daily P&L Aggregator
 
     func testDailyPnl_singleTrade() async {
-        let today = Calendar.current.startOfDay(for: Date())
+        let today = makeDay(2025, 1, 14)
         let t = makeLong("DAY1", buys: [(100, 10)], sells: [(110, 10)], status: .closed)
         t.dateClosed = today
         engine.update(trades: [t], startingBalance: 10_000)
@@ -465,7 +470,7 @@ final class AccountingEngineTests: XCTestCase {
     }
 
     func testDailyPnl_multipleTradesSameDay_summed() async {
-        let today = Calendar.current.startOfDay(for: Date())
+        let today = makeDay(2025, 1, 14)
         let t1 = makeLong("D1", buys: [(100, 10)], sells: [(110, 10)], status: .closed) // +100
         let t2 = makeLong("D2", buys: [(200, 5)],  sells: [(180, 5)],  status: .closed) // -100
         t1.dateClosed = today
@@ -477,9 +482,8 @@ final class AccountingEngineTests: XCTestCase {
     }
 
     func testDailyPnl_separateDays_separateKeys() async {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        let yesterday = cal.startOfDay(for: Date().addingTimeInterval(-86400))
+        let today = makeDay(2025, 1, 15)
+        let yesterday = makeDay(2025, 1, 14)
         let t1 = makeLong("DD1", buys: [(100, 10)], sells: [(110, 10)], status: .closed) // +100 today
         let t2 = makeLong("DD2", buys: [(100, 10)], sells: [(90, 10)],  status: .closed) // -100 yesterday
         t1.dateClosed = today
@@ -493,7 +497,7 @@ final class AccountingEngineTests: XCTestCase {
     }
 
     func testDailyPnl_openTrades_excluded() async {
-        let today = Calendar.current.startOfDay(for: Date())
+        let today = makeDay(2025, 1, 14)
         let open   = makeLong("OPEN", buys: [(100, 10)])                                 // open — should not appear
         let closed = makeLong("CLSD", buys: [(100, 10)], sells: [(120, 10)], status: .closed) // +200
         closed.dateClosed = today
@@ -502,5 +506,56 @@ final class AccountingEngineTests: XCTestCase {
         let daily = engine.portfolioState.dailyPnl
         XCTAssertEqual(daily.count, 1, "Open trades must not appear in dailyPnl")
         XCTAssertEqual(daily[today] ?? 0, 200.0, accuracy: 0.001)
+    }
+
+    // MARK: TWR
+
+    func testTWR_noCapitalEvents_equalsSimpleReturn() async {
+        // $10k start, one trade +$100 → TWR = 100/10000 = 1%
+        let t = makeLong("T1", buys: [(100, 10)], sells: [(110, 10)], status: .closed)
+        t.dateClosed = makeDay(2025, 1, 14)
+        engine.update(trades: [t], startingBalance: 10_000)
+        await settle()
+        XCTAssertEqual(engine.portfolioState.twr, 0.01, accuracy: 0.0001)
+    }
+
+    func testTWR_depositBetweenTrades_isolatesSkill() async {
+        // originalBalance = $10k; deposit $5k on Jan15 → startingBalance = $15k
+        // Trade 1 (+$100) on Jan14, Trade 2 (+$100) on Jan16
+        // Sub-period 1: 10000→10100 (+1%); Sub-period 2: 15100→15200 (+0.6622%)
+        // TWR = 1.01 × (15200/15100) − 1 ≈ 0.016689
+        let jan14 = makeDay(2025, 1, 14)
+        let jan15 = makeDay(2025, 1, 15)
+        let jan16 = makeDay(2025, 1, 16)
+
+        let t1 = makeLong("T1", buys: [(100, 10)], sells: [(110, 10)], status: .closed)
+        t1.dateClosed = jan14
+        let t2 = makeLong("T2", buys: [(100, 10)], sells: [(110, 10)], status: .closed)
+        t2.dateClosed = jan16
+
+        let deposit = CapitalEvent(amount: 5_000, date: jan15)
+        engine.update(trades: [t1, t2], startingBalance: 15_000, capitalEvents: [deposit])
+        await settle()
+        XCTAssertEqual(engine.portfolioState.twr, 0.016689, accuracy: 0.0001)
+    }
+
+    func testTWR_withdrawal_doesNotDistortSkill() async {
+        // originalBalance = $10k; withdrawal $2k on Jan15 → startingBalance = $8k
+        // Trade 1 (+$1000) on Jan14, Trade 2 (+$500) on Jan16
+        // Sub-period 1: 10000→11000 (+10%); Sub-period 2: 9000→9500 (+5.556%)
+        // TWR = 1.1 × (9500/9000) − 1 ≈ 0.16111
+        let jan14 = makeDay(2025, 1, 14)
+        let jan15 = makeDay(2025, 1, 15)
+        let jan16 = makeDay(2025, 1, 16)
+
+        let t1 = makeLong("T1", buys: [(100, 10)], sells: [(200, 10)], status: .closed)
+        t1.dateClosed = jan14
+        let t2 = makeLong("T2", buys: [(100, 10)], sells: [(150, 10)], status: .closed)
+        t2.dateClosed = jan16
+
+        let withdrawal = CapitalEvent(amount: -2_000, date: jan15)
+        engine.update(trades: [t1, t2], startingBalance: 8_000, capitalEvents: [withdrawal])
+        await settle()
+        XCTAssertEqual(engine.portfolioState.twr, 0.16111, accuracy: 0.0001)
     }
 }
