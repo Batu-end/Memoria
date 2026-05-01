@@ -22,6 +22,9 @@ final class Portfolio {
     @Relationship(deleteRule: .cascade, inverse: \AccountSnapshot.portfolio)
     var snapshots: [AccountSnapshot] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \CapitalEvent.portfolio)
+    var capitalEvents: [CapitalEvent] = []
+
     init(name: String, startingBalance: Double = 0.0, sortOrder: Int = 0) {
         self.id = UUID()
         self.name = name

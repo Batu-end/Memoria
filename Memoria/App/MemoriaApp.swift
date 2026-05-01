@@ -18,6 +18,7 @@ struct MemoriaApp: App {
             AccountSnapshot.self,
             ActivityLog.self,
             WatchlistItem.self,
+            CapitalEvent.self,
         ])
 
         #if DEBUG
