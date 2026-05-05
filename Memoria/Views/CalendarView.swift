@@ -249,7 +249,12 @@ struct CalendarView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.white.opacity(0.5) : Color.white.opacity(0.04), lineWidth: isSelected ? 1.5 : 0.5)
+                    .stroke(
+                        isSelected ? Color.white.opacity(0.5) :
+                        isToday ? Color(red: 0.92, green: 0.81, blue: 0.42).opacity(0.5) :
+                        Color.white.opacity(0.04),
+                        lineWidth: isSelected ? 1.5 : isToday ? 1.0 : 0.5
+                    )
             )
             .scaleEffect(isSelected ? 1.03 : 1.0)
         }
