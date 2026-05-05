@@ -177,7 +177,15 @@ struct DashboardView: View {
                     .animation(.easeInOut(duration: 0.2), value: stealthMode)
             }
             .font(.custom("Bodoni 72", size: 64))
-                
+
+            // TWR — always visible (intentionally not stealthed)
+            let twr = accountingEngine.portfolioState.twr
+            if twr != 0 {
+                Text(twr >= 0 ? String(format: "+%.2f%%", twr * 100) : String(format: "%.2f%%", twr * 100))
+                    .font(.system(size: 17, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(twr >= 0 ? Color.green : Color.red)
+            }
+
             // Market Status Indicator
             HStack(spacing: 6) {
                 Circle()
@@ -403,16 +411,6 @@ struct DashboardView: View {
                     title: "Max Drawdown",
                     value: String(format: "%.1f%%", accountingEngine.portfolioState.maxDrawdown),
                     color: accountingEngine.portfolioState.maxDrawdown < 5.0 ? .green : .red,
-                    hideable: false
-                )
-            }
-
-            HStack(spacing: 15) {
-                let twr = accountingEngine.portfolioState.twr
-                SummaryCard(
-                    title: "TWR",
-                    value: twr == 0 ? "—" : String(format: "%+.2f%%", twr * 100),
-                    color: twr >= 0 ? .green : .red,
                     hideable: false
                 )
             }
