@@ -111,7 +111,6 @@ struct TradeRowView: View {
                 .fill(accentColor)
                 .frame(width: 3)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay {
             if trade.status == .open {
                 Rectangle()
@@ -131,9 +130,9 @@ struct TradeRowView: View {
                     .offset(x: shimmerX)
                     .blendMode(.overlay)
                     .allowsHitTesting(false)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .background(GeometryReader { geo in
             Color.clear.onAppear { rowWidth = geo.size.width }
         })
