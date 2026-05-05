@@ -17,6 +17,7 @@ struct SettingsView: View {
     @Query private var watchlistItems: [WatchlistItem]
     @Query private var accountSnapshots: [AccountSnapshot]
     @Query private var activityLogs: [ActivityLog]
+    @Query private var capitalEvents: [CapitalEvent]
 
     init(portfolio: Portfolio) {
         self.portfolio = portfolio
@@ -24,6 +25,7 @@ struct SettingsView: View {
         _trades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id })
         _watchlistItems = Query(filter: #Predicate<WatchlistItem> { $0.portfolio?.id == id })
         _accountSnapshots = Query(filter: #Predicate<AccountSnapshot> { $0.portfolio?.id == id })
+        _capitalEvents = Query(filter: #Predicate<CapitalEvent> { $0.portfolio?.id == id })
     }
 
     @AppStorage("traderName", store: .app) private var traderName: String = ""
@@ -348,6 +350,9 @@ struct SettingsView: View {
                         } else {
                             portfolio.startingBalance -= amount
                         }
+                        let event = CapitalEvent(amount: action == .deposit ? amount : -amount)
+                        event.portfolio = portfolio
+                        modelContext.insert(event)
                     }
                 }
             .alert("Reset \"\(portfolio.name)\"?", isPresented: $showingResetAlert) {
@@ -398,6 +403,7 @@ struct SettingsView: View {
         for item in watchlistItems { modelContext.delete(item) }
         for snapshot in accountSnapshots { modelContext.delete(snapshot) }
         for log in activityLogs { modelContext.delete(log) }
+        for event in capitalEvents { modelContext.delete(event) }
         try? modelContext.save()
 
         portfolio.startingBalance = 0.0
