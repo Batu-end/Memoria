@@ -45,6 +45,7 @@ struct PortfolioSwitcherView: View {
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
+                            .tint(.red)
                         }
                         Button {
                             portfolioToRename = portfolio
@@ -67,6 +68,7 @@ struct PortfolioSwitcherView: View {
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
+                            .tint(.red)
                         }
                     }
                 }
