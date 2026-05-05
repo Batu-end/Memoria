@@ -90,6 +90,7 @@ struct TradesListView: View {
                                 } label: {
                                     Image(systemName: "trash")
                                 }
+                                .tint(.red)
 
                                 if trade.status == .open {
                                     Button {
