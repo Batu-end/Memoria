@@ -72,6 +72,7 @@ struct WatchlistView: View {
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
+                                    .tint(.red)
                                 }
                         }
                         .onMove(perform: moveItems)

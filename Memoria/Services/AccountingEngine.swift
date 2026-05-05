@@ -11,6 +11,11 @@ struct CapturedExecution {
     let type: ExecutionType
 }
 
+struct CapturedCapitalEvent {
+    let date: Date
+    let amount: Double
+}
+
 struct CapturedTrade {
     let id: UUID
     let ticker: String
@@ -55,6 +60,7 @@ class AccountingEngine {
     private var trades: [Trade] = []
     private var quotes: [String: StockQuote] = [:]
     private var startingBalance: Double = 0.0
+    private var capturedCapitalEvents: [CapturedCapitalEvent] = []
 
     private var calculationTask: Task<Void, Never>?
 
@@ -65,7 +71,8 @@ class AccountingEngine {
         self.trades = []
         self.tradeAccounting = [:]
         self.portfolioState = .empty
-        self.quotes = [:] // Clear market data for test isolation
+        self.quotes = [:]
+        self.capturedCapitalEvents = []
     }
     
     /// Internal method for testing to simulate price moves.
@@ -76,9 +83,10 @@ class AccountingEngine {
     
     // MARK: - Input updates
     
-    func update(trades: [Trade], startingBalance: Double) {
+    func update(trades: [Trade], startingBalance: Double, capitalEvents: [CapitalEvent] = []) {
         self.trades = trades
         self.startingBalance = startingBalance
+        self.capturedCapitalEvents = capitalEvents.map { CapturedCapitalEvent(date: $0.date, amount: $0.amount) }
         recalculate()
     }
 
@@ -100,6 +108,7 @@ class AccountingEngine {
         let capturedTrades = self.trades.map { CapturedTrade($0) }
         let currentQuotes = self.quotes
         let balance = self.startingBalance
+        let capturedEvents = self.capturedCapitalEvents
         
         // 2. Cancel any pending calculation
         calculationTask?.cancel()
@@ -249,6 +258,44 @@ class AccountingEngine {
                 if dd > maxDD { maxDD = dd }
             }
             newState.maxDrawdown = maxDD
+
+            // TWR computation
+            // originalBalance = the starting capital before any mid-journey deposits/withdrawals.
+            // Each capital event shifts `balance` by its amount, so we subtract them all back.
+            let originalBalance = balance - capturedEvents.reduce(0) { $0 + $1.amount }
+            if originalBalance > 0 {
+                let tradePnLs = closedTrades.compactMap { trade -> (Date, Double)? in
+                    guard let pnl = newTradeMath[trade.id]?.totalPnl else { return nil }
+                    return (trade.dateClosed ?? trade.dateAdded, pnl)
+                }.sorted { $0.0 < $1.0 }
+
+                let sortedEvents = capturedEvents.sorted { $0.date < $1.date }
+                var twrFactor = 1.0
+                var runningPnl = 0.0
+                var capitalAccumulated = 0.0
+                var tradeIdx = 0
+                var periodStart = originalBalance
+
+                for event in sortedEvents {
+                    while tradeIdx < tradePnLs.count && tradePnLs[tradeIdx].0 <= event.date {
+                        runningPnl += tradePnLs[tradeIdx].1
+                        tradeIdx += 1
+                    }
+                    let valueBeforeEvent = originalBalance + runningPnl + capitalAccumulated
+                    if periodStart > 0 { twrFactor *= valueBeforeEvent / periodStart }
+                    capitalAccumulated += event.amount
+                    periodStart = valueBeforeEvent + event.amount
+                }
+
+                while tradeIdx < tradePnLs.count {
+                    runningPnl += tradePnLs[tradeIdx].1
+                    tradeIdx += 1
+                }
+                let finalValue = originalBalance + runningPnl + capitalAccumulated
+                if periodStart > 0 { twrFactor *= finalValue / periodStart }
+
+                newState.twr = twrFactor - 1
+            }
 
             // Daily P&L aggregator (closed trades, grouped by start-of-day)
             var dailyPnl: [Date: Double] = [:]

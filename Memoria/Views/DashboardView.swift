@@ -64,6 +64,7 @@ struct DashboardView: View {
     @Query private var trades: [Trade]
     @Query private var watchlistItems: [WatchlistItem]
     @Query private var openTrades: [Trade]
+    @Query private var capitalEvents: [CapitalEvent]
 
     init(portfolio: Portfolio) {
         self.portfolio = portfolio
@@ -71,6 +72,7 @@ struct DashboardView: View {
         _trades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id }, sort: \Trade.dateAdded, order: .reverse)
         _watchlistItems = Query(filter: #Predicate<WatchlistItem> { $0.portfolio?.id == id })
         _openTrades = Query(filter: #Predicate<Trade> { $0.portfolio?.id == id && $0.statusRaw == "Open" })
+        _capitalEvents = Query(filter: #Predicate<CapitalEvent> { $0.portfolio?.id == id })
     }
     
     // Live State
@@ -124,14 +126,17 @@ struct DashboardView: View {
             updateTask = Task {
                 try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
                 guard !Task.isCancelled else { return }
-                accountingEngine.update(trades: newValue, startingBalance: portfolio.startingBalance)
+                accountingEngine.update(trades: newValue, startingBalance: portfolio.startingBalance, capitalEvents: capitalEvents)
             }
         }
         .onChange(of: liveQuotes) { _, newValue in
             accountingEngine.update(quotes: newValue)
         }
         .onChange(of: portfolio.startingBalance) { _, newValue in
-            accountingEngine.update(trades: trades, startingBalance: newValue)
+            accountingEngine.update(trades: trades, startingBalance: newValue, capitalEvents: capitalEvents)
+        }
+        .onChange(of: capitalEvents) { _, newValue in
+            accountingEngine.update(trades: trades, startingBalance: portfolio.startingBalance, capitalEvents: newValue)
         }
         .onChange(of: benchmarkTimeframe) { _, _ in
             Task { await fetchSpyData() }
@@ -172,7 +177,15 @@ struct DashboardView: View {
                     .animation(.easeInOut(duration: 0.2), value: stealthMode)
             }
             .font(.custom("Bodoni 72", size: 64))
-                
+
+            // TWR — always visible (intentionally not stealthed)
+            let twr = accountingEngine.portfolioState.twr
+            if twr != 0 {
+                Text(twr >= 0 ? String(format: "+%.2f%%", twr * 100) : String(format: "%.2f%%", twr * 100))
+                    .font(.system(size: 17, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(twr >= 0 ? Color.green : Color.red)
+            }
+
             // Market Status Indicator
             HStack(spacing: 6) {
                 Circle()
@@ -789,7 +802,7 @@ struct DashboardView: View {
     private func initializeDashboard() async {
         liveQuotes = [:]
         isDashboardReady = false
-        accountingEngine.update(trades: trades, startingBalance: portfolio.startingBalance)
+        accountingEngine.update(trades: trades, startingBalance: portfolio.startingBalance, capitalEvents: capitalEvents)
         
         await fetchLiveQuotes()
         await fetchSpyData()

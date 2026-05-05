@@ -9,6 +9,7 @@ struct CalendarView: View {
     let portfolio: Portfolio
 
     @Query private var allTrades: [Trade]
+    @Query private var capitalEvents: [CapitalEvent]
     @State private var engine = AccountingEngine.shared
     @State private var selectedDay: Date? = nil
     @State private var displayMonth: Date = Date()
@@ -21,6 +22,7 @@ struct CalendarView: View {
             sort: \Trade.dateAdded,
             order: .forward
         )
+        _capitalEvents = Query(filter: #Predicate<CapitalEvent> { $0.portfolio?.id == id })
     }
 
     // MARK: - Derived
@@ -97,10 +99,13 @@ struct CalendarView: View {
             .darkNavigationBar()
         }
         .task(id: portfolio.id) {
-            engine.update(trades: allTrades, startingBalance: portfolio.startingBalance)
+            engine.update(trades: allTrades, startingBalance: portfolio.startingBalance, capitalEvents: capitalEvents)
         }
         .onChange(of: allTrades) { _, newValue in
-            engine.update(trades: newValue, startingBalance: portfolio.startingBalance)
+            engine.update(trades: newValue, startingBalance: portfolio.startingBalance, capitalEvents: capitalEvents)
+        }
+        .onChange(of: capitalEvents) { _, newValue in
+            engine.update(trades: allTrades, startingBalance: portfolio.startingBalance, capitalEvents: newValue)
         }
     }
 
@@ -244,7 +249,12 @@ struct CalendarView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.white.opacity(0.5) : Color.white.opacity(0.04), lineWidth: isSelected ? 1.5 : 0.5)
+                    .stroke(
+                        isSelected ? Color.white.opacity(0.5) :
+                        isToday ? Color(red: 0.92, green: 0.81, blue: 0.42).opacity(0.5) :
+                        Color.white.opacity(0.04),
+                        lineWidth: isSelected ? 1.5 : isToday ? 1.0 : 0.5
+                    )
             )
             .scaleEffect(isSelected ? 1.03 : 1.0)
         }
