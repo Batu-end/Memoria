@@ -12,11 +12,18 @@ struct WatchlistRowView: View {
     let sparkline: [Double]
     let deleteItem: () -> Void
 
+    @AppStorage("watchlistMoverAlert", store: .app) private var watchlistMoverAlert: Bool = true
+    @AppStorage("watchlistMoverThreshold", store: .app) private var watchlistMoverThreshold: Double = 5.0
+
     @State private var isHovered = false
     @State private var isRowHovered = false
 
     private var isUp: Bool { (item.priceChangePercent ?? 0) >= 0 }
     private var accentColor: Color { isUp ? .green : .red }
+    private var isBigMover: Bool {
+        guard watchlistMoverAlert, let pct = item.priceChangePercent else { return false }
+        return abs(pct) >= watchlistMoverThreshold
+    }
 
     private func compact(_ value: Double) -> String {
         switch value {
@@ -128,6 +135,12 @@ struct WatchlistRowView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(accentColor.opacity(0.12), in: Capsule())
+                        .overlay(
+                            Capsule().stroke(
+                                Color(red: 0.92, green: 0.81, blue: 0.42).opacity(isBigMover ? 0.8 : 0),
+                                lineWidth: 1
+                            )
+                        )
                 }
 
             }

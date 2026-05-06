@@ -37,6 +37,8 @@ struct SettingsView: View {
     @AppStorage("showTickerLogos", store: .app) private var showTickerLogos: Bool = true
     @AppStorage("monochromeLogos", store: .app) private var monochromeLogos: Bool = false
     @AppStorage("stealthMode", store: .app) private var stealthMode: Bool = false
+    @AppStorage("watchlistMoverAlert", store: .app) private var watchlistMoverAlert: Bool = true
+    @AppStorage("watchlistMoverThreshold", store: .app) private var watchlistMoverThreshold: Double = 5.0
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
@@ -291,6 +293,56 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle(isOn: $watchlistMoverAlert) {
+                        #if os(macOS)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Big mover badge", systemImage: "exclamationmark.circle")
+                            Text("Flags watchlist items that moved more than the threshold today.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 28)
+                        }
+                        #else
+                        HStack(spacing: 14) {
+                            Image(systemName: "exclamationmark.circle")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Big mover badge")
+                                    .font(.system(size: 16))
+                                Text("Flags watchlist items that moved more than the threshold today.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        #endif
+                    }
+                    .padding(.vertical, 4)
+
+                    if watchlistMoverAlert {
+                        Stepper(value: $watchlistMoverThreshold, in: 1...25, step: 0.5) {
+                            #if os(macOS)
+                            Text("Threshold: \(watchlistMoverThreshold, specifier: "%.1f")%")
+                            #else
+                            HStack(spacing: 14) {
+                                Image(systemName: "percent")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 30)
+                                Text("Threshold: \(watchlistMoverThreshold, specifier: "%.1f")%")
+                                    .font(.system(size: 16))
+                            }
+                            #endif
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("Watchlist")
+                }
+
+                Section {
                     Toggle(isOn: $mathEngineInspectorEnabled) {
                         Label {
                             Text("Math Engine Inspector")
@@ -412,6 +464,8 @@ struct SettingsView: View {
         unreadableDate = false
         mathEngineInspectorEnabled = false
         monochromeLogos = false
+        watchlistMoverAlert = true
+        watchlistMoverThreshold = 5.0
 
         AccountingEngine.shared.reset()
     }
