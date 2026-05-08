@@ -160,21 +160,6 @@ struct WatchlistRowView: View {
             .frame(width: 90, alignment: .trailing)
             #endif
 
-            // MARK: All-Time
-            #if os(macOS)
-            if let changeSince = item.changeSinceAdded {
-                VStack(spacing: 2) {
-                    Text("All-Time")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.tertiary)
-                    Text("\(changeSince >= 0 ? "+" : "")\(changeSince, specifier: "%.1f")%")
-                        .font(.system(size: 12, weight: .bold).monospacedDigit())
-                        .foregroundStyle(changeSince >= 0 ? Color.green : Color.red)
-                }
-                .frame(width: 64, alignment: .trailing)
-                .padding(.leading, 8)
-            }
-
             // MARK: Delete
             Button(action: deleteItem) {
                 Image(systemName: "xmark")

@@ -177,7 +177,7 @@ struct WatchlistView: View {
             .onReceive(refreshTimer) { _ in
                 let status = MarketService.shared.currentStatus()
                 if status == .open || status == .preMarket || status == .postMarket {
-                    Task { await refreshQuotes() }
+                    Task { await refreshQuotes(includePeriodCloses: false) }
                 }
             }
     }
@@ -226,7 +226,7 @@ struct WatchlistView: View {
         return result
     }
 
-    private func refreshQuotes() async {
+    private func refreshQuotes(includePeriodCloses: Bool = true) async {
         guard !watchlistItems.isEmpty else { return }
 
         isRefreshing = true
@@ -235,9 +235,8 @@ struct WatchlistView: View {
 
         async let quotesTask = StockQuoteService.shared.fetchQuotes(for: symbols)
         async let sparklinesTask: [String: [Double]] = fetchBatchedSparklines(for: symbols)
-        async let periodClosesTask = StockQuoteService.shared.fetchPeriodCloses(for: symbols)
 
-        let (quotes, newSparklines, periodCloses) = await (quotesTask, sparklinesTask, periodClosesTask)
+        let (quotes, newSparklines) = await (quotesTask, sparklinesTask)
 
         for item in watchlistItems {
             if let quote = quotes[item.ticker.uppercased()] {
@@ -245,11 +244,14 @@ struct WatchlistView: View {
             }
         }
 
-        for item in watchlistItems {
-            if let closes = periodCloses[item.ticker.uppercased()],
-               let current = item.currentPrice, current > 0 {
-                item.weeklyChangePercent = closes.weeklyClose.map { ((current - $0) / $0) * 100 }
-                item.monthlyChangePercent = closes.monthlyClose.map { ((current - $0) / $0) * 100 }
+        if includePeriodCloses {
+            let periodCloses = await StockQuoteService.shared.fetchPeriodCloses(for: symbols)
+            for item in watchlistItems {
+                if let closes = periodCloses[item.ticker.uppercased()],
+                   let current = item.currentPrice, current > 0 {
+                    item.weeklyChangePercent = closes.weeklyClose.map { ((current - $0) / $0) * 100 }
+                    item.monthlyChangePercent = closes.monthlyClose.map { ((current - $0) / $0) * 100 }
+                }
             }
         }
 
