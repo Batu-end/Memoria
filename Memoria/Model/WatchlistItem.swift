@@ -21,6 +21,8 @@ final class WatchlistItem {
     var currentPrice: Double?
     var priceChange: Double?
     var priceChangePercent: Double?
+    var weeklyChangePercent: Double?
+    var monthlyChangePercent: Double?
     var volume: Int?
     var marketCap: Double?
     var lastUpdated: Date?
