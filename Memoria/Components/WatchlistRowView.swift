@@ -161,6 +161,7 @@ struct WatchlistRowView: View {
             #endif
 
             // MARK: Delete
+            #if os(macOS)
             Button(action: deleteItem) {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .semibold))
