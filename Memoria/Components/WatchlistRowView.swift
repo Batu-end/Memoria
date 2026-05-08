@@ -10,6 +10,7 @@ import Charts
 struct WatchlistRowView: View {
     let item: WatchlistItem
     let sparkline: [Double]
+    let timeframe: String
     let deleteItem: () -> Void
 
     @AppStorage("watchlistMoverAlert", store: .app) private var watchlistMoverAlert: Bool = true
@@ -18,10 +19,19 @@ struct WatchlistRowView: View {
     @State private var isHovered = false
     @State private var isRowHovered = false
 
-    private var isUp: Bool { (item.priceChangePercent ?? 0) >= 0 }
+    private var displayPercent: Double? {
+        switch timeframe {
+        case "1W": return item.weeklyChangePercent
+        case "1M": return item.monthlyChangePercent
+        case "ALL": return item.changeSinceAdded
+        default: return item.priceChangePercent
+        }
+    }
+
+    private var isUp: Bool { (displayPercent ?? 0) >= 0 }
     private var accentColor: Color { isUp ? .green : .red }
     private var isBigMover: Bool {
-        guard watchlistMoverAlert, let pct = item.priceChangePercent else { return false }
+        guard watchlistMoverAlert, let pct = displayPercent else { return false }
         return abs(pct) >= watchlistMoverThreshold
     }
 
@@ -128,7 +138,7 @@ struct WatchlistRowView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                if let pct = item.priceChangePercent {
+                if let pct = displayPercent {
                     Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.2f")%")
                         .font(.system(size: 10, weight: .semibold).monospacedDigit())
                         .foregroundStyle(accentColor)

@@ -39,6 +39,7 @@ struct SettingsView: View {
     @AppStorage("stealthMode", store: .app) private var stealthMode: Bool = false
     @AppStorage("watchlistMoverAlert", store: .app) private var watchlistMoverAlert: Bool = true
     @AppStorage("watchlistMoverThreshold", store: .app) private var watchlistMoverThreshold: Double = 5.0
+    @AppStorage("watchlistTimeframe", store: .app) private var watchlistTimeframe: String = "1D"
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
@@ -466,6 +467,7 @@ struct SettingsView: View {
         monochromeLogos = false
         watchlistMoverAlert = true
         watchlistMoverThreshold = 5.0
+        watchlistTimeframe = "1D"
 
         AccountingEngine.shared.reset()
     }

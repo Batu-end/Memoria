@@ -23,11 +23,13 @@ struct WatchlistView: View {
         )
     }
 
+    @AppStorage("watchlistTimeframe", store: .app) private var timeframe: String = "1D"
+
     @State private var showAddItem = false
     @State private var isRefreshing = false
     @State private var lastRefreshTime: Date?
     @State private var sparklines: [String: [Double]] = [:]
-    
+
     @State private var showiOSAlert = false
     @State private var iosTickerInput = ""
 
@@ -60,25 +62,28 @@ struct WatchlistView: View {
                         description: Text("Add a stock to start tracking live prices.")
                     )
                 } else {
-                    List {
-                        ForEach(watchlistItems) { item in
-                            WatchlistRowView(item: item, sparkline: sparklines[item.ticker] ?? [], deleteItem: { deleteItem(item) })
-                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        deleteItem(item)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                    VStack(spacing: 0) {
+                        timeframePicker
+                        List {
+                            ForEach(watchlistItems) { item in
+                                WatchlistRowView(item: item, sparkline: sparklines[item.ticker] ?? [], timeframe: timeframe, deleteItem: { deleteItem(item) })
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            deleteItem(item)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .tint(.red)
                                     }
-                                    .tint(.red)
-                                }
+                            }
+                            .onMove(perform: moveItems)
                         }
-                        .onMove(perform: moveItems)
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
                 }
             }
             .goldTitle("Watchlist")
@@ -177,6 +182,29 @@ struct WatchlistView: View {
             }
     }
 
+    // MARK: - Timeframe Picker
+
+    private var timeframePicker: some View {
+        HStack(spacing: 0) {
+            ForEach(["1D", "1W", "1M", "ALL"], id: \.self) { tf in
+                Button(tf) { timeframe = tf }
+                    .font(.system(size: 12, weight: timeframe == tf ? .bold : .regular))
+                    .foregroundStyle(
+                        timeframe == tf
+                            ? Color(red: 0.92, green: 0.81, blue: 0.42)
+                            : Color.white.opacity(0.35)
+                    )
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+        }
+        .background(Color.white.opacity(0.04))
+        .overlay(
+            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5),
+            alignment: .bottom
+        )
+    }
+
     // MARK: - Data Fetching
 
     private func fetchBatchedSparklines(for symbols: [String]) async -> [String: [Double]] {
@@ -207,14 +235,24 @@ struct WatchlistView: View {
 
         async let quotesTask = StockQuoteService.shared.fetchQuotes(for: symbols)
         async let sparklinesTask: [String: [Double]] = fetchBatchedSparklines(for: symbols)
+        async let periodClosesTask = StockQuoteService.shared.fetchPeriodCloses(for: symbols)
 
-        let (quotes, newSparklines) = await (quotesTask, sparklinesTask)
+        let (quotes, newSparklines, periodCloses) = await (quotesTask, sparklinesTask, periodClosesTask)
 
         for item in watchlistItems {
             if let quote = quotes[item.ticker.uppercased()] {
                 item.updateQuote(quote)
             }
         }
+
+        for item in watchlistItems {
+            if let closes = periodCloses[item.ticker.uppercased()],
+               let current = item.currentPrice, current > 0 {
+                item.weeklyChangePercent = closes.weeklyClose.map { ((current - $0) / $0) * 100 }
+                item.monthlyChangePercent = closes.monthlyClose.map { ((current - $0) / $0) * 100 }
+            }
+        }
+
         sparklines.merge(newSparklines) { _, new in new }
 
         lastRefreshTime = Date()

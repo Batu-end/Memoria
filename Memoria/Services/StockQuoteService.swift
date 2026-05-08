@@ -146,6 +146,54 @@ class StockQuoteService {
         }
     }
     
+    /// Fetches the earliest and ~5-trading-day-ago closes for a batch of symbols over a 1-month window.
+    /// Used to calculate weekly and monthly change % independently of the live quote.
+    func fetchPeriodCloses(for symbols: [String]) async -> [String: (weeklyClose: Double?, monthlyClose: Double?)] {
+        var results: [String: (weeklyClose: Double?, monthlyClose: Double?)] = [:]
+        let batchSize = 8
+        let batches = stride(from: 0, to: symbols.count, by: batchSize)
+            .map { Array(symbols[$0..<min($0 + batchSize, symbols.count)]) }
+
+        for batch in batches {
+            await withTaskGroup(of: (String, (Double?, Double?)).self) { group in
+                for symbol in batch {
+                    group.addTask {
+                        let closes = await self.fetchSinglePeriodCloses(symbol: symbol)
+                        return (symbol.uppercased(), closes)
+                    }
+                }
+                for await (symbol, closes) in group {
+                    results[symbol] = (weeklyClose: closes.0, monthlyClose: closes.1)
+                }
+            }
+        }
+        return results
+    }
+
+    private func fetchSinglePeriodCloses(symbol: String) async -> (Double?, Double?) {
+        let urlString = "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1d&range=1mo"
+        guard let url = URL(string: urlString) else { return (nil, nil) }
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        guard let (data, _) = try? await URLSession.shared.data(for: request),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let chart = json["chart"] as? [String: Any],
+              let chartResults = chart["result"] as? [[String: Any]],
+              let result = chartResults.first,
+              let indicators = result["indicators"] as? [String: Any],
+              let quote = indicators["quote"] as? [[String: Any]],
+              let closes = quote.first?["close"] as? [Double?] else { return (nil, nil) }
+
+        let valid = closes.compactMap { $0 }
+        guard valid.count >= 2 else { return (nil, nil) }
+
+        let monthlyClose = valid.first
+        let weeklyClose = valid[max(0, valid.count - 6)]
+        return (weeklyClose, monthlyClose)
+    }
+
     /// Fetches today's intraday closes at 5-minute intervals for a sparkline.
     func fetchSparkline(symbol: String) async -> [Double] {
         let urlString = "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=5m&range=1d"
