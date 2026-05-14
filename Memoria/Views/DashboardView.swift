@@ -77,14 +77,7 @@ struct DashboardView: View {
     
     // Live State
     @State private var liveQuotes: [String: StockQuote] = [:]
-    @State private var isSpyRefreshing = false
-    
-    // Benchmarking
-    @State private var benchmarkTimeframe: BenchmarkTimeframe = .ytd
-    @State private var spyBaseline: Double?
-    @State private var spyCurrent: Double?
-    @State private var spyHistoricalData: [HistoricalQuote] = []
-    
+
     @State private var marketStatus: MarketStatus = MarketService.shared.currentStatus()
     @State private var isDashboardReady = false
     @State private var showPortfolioSwitcher = false
@@ -105,7 +98,6 @@ struct DashboardView: View {
                 activePortfolioSection
                 summaryCards
                 equityCurveSection
-                spyPerformanceSection
             }
             .padding(.vertical)
             .padding(.bottom, 40)
@@ -137,9 +129,6 @@ struct DashboardView: View {
         }
         .onChange(of: capitalEvents) { _, newValue in
             accountingEngine.update(trades: trades, startingBalance: portfolio.startingBalance, capitalEvents: newValue)
-        }
-        .onChange(of: benchmarkTimeframe) { _, _ in
-            Task { await fetchSpyData() }
         }
         .sheet(isPresented: $showPortfolioSwitcher) {
             PortfolioSwitcherView()
@@ -369,61 +358,21 @@ struct DashboardView: View {
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Standard Cards (Retained Original)
             HStack(spacing: 15) {
-                SummaryCard(
-                    title: "Total P&L",
-                    value: formatPnl(accountingEngine.portfolioState.totalPnl),
-                    color: accountingEngine.portfolioState.totalPnl >= 0 ? .green : .red,
-                    hideable: true
-                )
                 SummaryCard(
                     title: "Win Rate",
                     value: accountingEngine.portfolioState.closedTradesCount > 0 ? String(format: "%.0f%%", accountingEngine.portfolioState.winRate) : "N/A",
                     color: accountingEngine.portfolioState.winRate >= 50 ? .green : .orange,
                     hideable: false
                 )
-            }
-            
-            HStack(spacing: 15) {
                 SummaryCard(
-                    title: "Profit Factor",
-                    value: accountingEngine.portfolioState.profitFactor.isInfinite ? "Perfect" : (accountingEngine.portfolioState.profitFactor > 0 ? String(format: "%.2f", accountingEngine.portfolioState.profitFactor) : "0.00"),
-                    color: accountingEngine.portfolioState.profitFactor >= 1.5 ? .green : .orange,
-                    hideable: false
-                )
-                SummaryCard(
-                    title: "Avg Win / Loss",
-                    value: "\(Int(accountingEngine.portfolioState.avgWin)) / \(Int(abs(accountingEngine.portfolioState.avgLoss)))",
-                    color: accountingEngine.portfolioState.avgWin > abs(accountingEngine.portfolioState.avgLoss) ? .green : .red,
-                    hideable: true
-                )
-            }
-
-            HStack(spacing: 15) {
-                SummaryCard(
-                    title: "Avg Hold Time",
-                    value: avgHoldTimeFormatted,
-                    color: .cyan,
-                    hideable: false
-                )
-                SummaryCard(
-                    title: "Max Drawdown",
-                    value: String(format: "%.1f%%", accountingEngine.portfolioState.maxDrawdown),
-                    color: accountingEngine.portfolioState.maxDrawdown < 5.0 ? .green : .red,
-                    hideable: false
-                )
-            }
-
-            HStack(spacing: 15) {
-                SummaryCard(
-                    title: "Open Trades",
+                    title: "Open",
                     value: "\(accountingEngine.portfolioState.openTradesCount)",
                     color: .blue,
                     hideable: false
                 )
                 SummaryCard(
-                    title: "Closed Trades",
+                    title: "Closed",
                     value: "\(accountingEngine.portfolioState.closedTradesCount)",
                     color: .purple,
                     hideable: false
@@ -573,127 +522,6 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - SPY Performance
-    
-    private var spyPerformanceSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Relative Performance")
-                .font(.headline)
-                .padding(.horizontal)
-            
-            VStack(spacing: 16) {
-                HStack(spacing: 12) {
-                    // Portfolio Return
-                    HStack(spacing: 4) {
-                        Image(systemName: "chart.pie.fill")
-                        Text("\(accountingEngine.portfolioState.totalPnl >= 0 ? "+" : "")\(accountingEngine.portfolioState.totalPnl, format: .currency(code: "USD"))")
-                    }
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
-                    
-                    // VS
-                    Text("vs")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    
-                    // SPY Comparison
-                    HStack(spacing: 4) {
-                        Image(systemName: "building.columns.fill")
-                        if let sr = spyReturn {
-                            let spyProfit = (sr / 100.0) * portfolio.startingBalance
-                            Text("SPY \(spyProfit >= 0 ? "+" : "")\(spyProfit, format: .currency(code: "USD"))")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(spyProfit >= 0 ? Color.green : Color.red)
-                        } else {
-                            Text("SPY --")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                
-                Picker("", selection: $benchmarkTimeframe) {
-                    ForEach(BenchmarkTimeframe.allCases, id: \.self) { frame in
-                        Text(frame.rawValue).tag(frame)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 180)
-                
-                let relativeData = accountingEngine.calculateRelativeCurve(from: benchmarkStartDate)
-                if relativeData.count >= 2 {
-                    Chart {
-                        ForEach(relativeData) { point in
-                            LineMark(
-                                x: .value("Time", point.date),
-                                y: .value("Profit", point.balance),
-                                series: .value("Type", "Portfolio")
-                            )
-                            .interpolationMethod(.monotone)
-                            .foregroundStyle(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red)
-                            .lineStyle(StrokeStyle(lineWidth: 3))
-                        }
-                        
-                        if let firstSpy = spyHistoricalData.first?.close, firstSpy > 0 {
-                            ForEach(spyHistoricalData) { point in
-                                let spyProfit = ((point.close - firstSpy) / firstSpy) * portfolio.startingBalance
-                                LineMark(
-                                    x: .value("Time", point.date),
-                                    y: .value("Profit", spyProfit),
-                                    series: .value("Type", "SPY")
-                                )
-                                .interpolationMethod(.monotone)
-                                .foregroundStyle(Color.purple)
-                                .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
-                            }
-                        }
-                    }
-                    .chartYScale(domain: relativeYDomain)
-                    .chartXAxis { AxisMarks(preset: .aligned, position: .bottom) }
-                    .chartYAxis {
-                        AxisMarks(position: .leading) { value in
-                            AxisValueLabel {
-                                if let d = value.as(Double.self) {
-                                    Text("\(d >= 0 ? "+" : "")\(Int(d))")
-                                }
-                            }
-                            AxisGridLine()
-                        }
-                    }
-                    .frame(height: 180)
-                    .padding(.top, 8)
-                    
-                    HStack(spacing: 20) {
-                        HStack(spacing: 4) {
-                            Circle().fill(accountingEngine.portfolioState.totalPnl >= 0 ? Color.green : Color.red).frame(width: 8, height: 8)
-                            Text("Portfolio").font(.caption).foregroundStyle(.secondary)
-                        }
-                        HStack(spacing: 4) {
-                            Rectangle().fill(Color.purple).frame(width: 12, height: 2)
-                            Text("S&P 500").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                } else {
-                    ContentUnavailableView(
-                        benchmarkTimeframe == .ytd ? "No Trades This Year" : "No Closed Trades",
-                        systemImage: "chart.xyaxis.line",
-                        description: Text("Close a trade to compare your performance against the S&P 500.")
-                    )
-                    .frame(height: 180)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(.ultraThinMaterial)
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-            )
-            .padding(.horizontal)
-        }
-    }
-    
     // MARK: - Sub-views (Refactored to improve compiler performance)
     
     private var timeOfDayLabel: String {
@@ -805,8 +633,7 @@ struct DashboardView: View {
         accountingEngine.update(trades: trades, startingBalance: portfolio.startingBalance, capitalEvents: capitalEvents)
         
         await fetchLiveQuotes()
-        await fetchSpyData()
-        
+
         await MainActor.run {
             withAnimation(.easeIn(duration: 0.2)) {
                 isDashboardReady = true
@@ -821,10 +648,7 @@ struct DashboardView: View {
         }
         
         if marketStatus == .open || marketStatus == .preMarket || marketStatus == .postMarket {
-            Task {
-                await fetchLiveQuotes()
-                await fetchSpyData()
-            }
+            Task { await fetchLiveQuotes() }
         }
     }
     
@@ -848,83 +672,6 @@ struct DashboardView: View {
         }
     }
     
-    private func fetchSpyData() async {
-        isSpyRefreshing = true
-        let start = benchmarkStartDate
-        
-        async let baseline = StockQuoteService.shared.fetchBaselinePrice(symbol: "SPY", startDate: start)
-        async let current = StockQuoteService.shared.fetchQuote(for: "SPY")
-        async let history = StockQuoteService.shared.fetchHistoricalSeries(symbol: "SPY", startDate: start)
-        
-        let (resolvedBaseline, resolvedCurrent, resolvedHistory) = await (baseline, current, history)
-        
-        await MainActor.run {
-            withAnimation {
-                self.spyBaseline = resolvedBaseline
-                self.spyCurrent = resolvedCurrent?.currentPrice
-                self.spyHistoricalData = resolvedHistory ?? []
-                self.isSpyRefreshing = false
-            }
-        }
-    }
-    
-    private var benchmarkStartDate: Date {
-        if benchmarkTimeframe == .ytd {
-            return Calendar.current.date(from: DateComponents(year: Calendar.current.component(.year, from: Date()), month: 1, day: 1))!
-        } else {
-            return trades.last?.dateAdded ?? Date()
-        }
-    }
-
-    private var spyReturn: Double? {
-        guard let current = spyCurrent, let baseline = spyBaseline, baseline > 0 else { return nil }
-        return ((current - baseline) / baseline) * 100
-    }
-    
-    private func formatPnl(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
-    }
-    
-    private func formatTimeInterval(_ seconds: Double) -> String {
-        let days = Int(seconds) / 86400
-        let hours = (Int(seconds) % 86400) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-        
-        if days > 0 {
-            return "\(days)d \(hours)h"
-        } else if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        } else {
-            return "\(minutes)m"
-        }
-    }
-    
-    private var avgHoldTimeFormatted: String {
-        let closed = trades.filter { $0.status == .closed && $0.dateClosed != nil }
-        guard !closed.isEmpty else { return "0d 0h" }
-        
-        let totalTimeInterval = closed.reduce(0.0) { result, trade in
-            result + (trade.dateClosed!.timeIntervalSince(trade.dateAdded))
-        }
-        
-        let avgSeconds = totalTimeInterval / Double(closed.count)
-        return formatTimeInterval(avgSeconds)
-    }
-
-    private var relativeYDomain: ClosedRange<Double> {
-        let curve = accountingEngine.calculateRelativeCurve(from: benchmarkStartDate).map { $0.balance }
-        let firstSpy = spyHistoricalData.first?.close ?? 1.0
-        let spyProfits = spyHistoricalData.map { (($0.close - firstSpy) / firstSpy) * portfolio.startingBalance }
-        
-        let allValues = curve + spyProfits
-        guard !allValues.isEmpty else { return -100...100 }
-        let minV = (allValues.min() ?? 0) - 100
-        let maxV = (allValues.max() ?? 0) + 100
-        return minV...maxV
-    }
 }
 
 #Preview {

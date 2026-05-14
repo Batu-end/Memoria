@@ -42,6 +42,9 @@ struct SettingsView: View {
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
+    #if DEBUG
+    @State private var sandboxSeeded = false
+    #endif
 
     @State private var capitalAction: CapitalAction?
     @State private var liveQuotes: [String: StockQuote] = [:]
@@ -351,6 +354,25 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    #if DEBUG
+                    Button {
+                        seedDemoPortfolio(into: modelContext)
+                        sandboxSeeded = true
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(sandboxSeeded ? "Demo Portfolio Created" : "Seed Demo Portfolio")
+                                Text("Adds \"Demo — 45 Trades\" for UI testing")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: sandboxSeeded ? "checkmark.circle.fill" : "wand.and.stars")
+                                .foregroundStyle(sandboxSeeded ? .green : .secondary)
+                        }
+                    }
+                    .disabled(sandboxSeeded)
+                    #endif
                 } header: {
                     Text("Developer Tools")
                 } footer: {
