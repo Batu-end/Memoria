@@ -243,6 +243,7 @@ struct CalendarView: View {
                         .foregroundStyle(pnl >= 0 ? .green : .red)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
+                        .stealthable()
                 }
             }
             .padding(.top, 6)
@@ -290,8 +291,8 @@ struct CalendarView: View {
 
             Divider().frame(height: 36).padding(.horizontal, 12)
 
-            summaryCell(label: "BEST",  value: monthBestDay  > 0 ? "+$\(Int(monthBestDay))"       : "—", color: Color(red: 0.35, green: 0.85, blue: 0.55))
-            summaryCell(label: "WORST", value: monthWorstDay < 0 ? "-$\(Int(abs(monthWorstDay)))" : "—", color: Color(red: 0.95, green: 0.38, blue: 0.38))
+            summaryCell(label: "BEST",  value: monthBestDay  > 0 ? "+$\(Int(monthBestDay))"       : "—", color: Color(red: 0.35, green: 0.85, blue: 0.55), stealth: true)
+            summaryCell(label: "WORST", value: monthWorstDay < 0 ? "-$\(Int(abs(monthWorstDay)))" : "—", color: Color(red: 0.95, green: 0.38, blue: 0.38), stealth: true)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -300,7 +301,7 @@ struct CalendarView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.08), lineWidth: 1))
     }
 
-    private func summaryCell(label: String, value: String, color: Color) -> some View {
+    private func summaryCell(label: String, value: String, color: Color, stealth: Bool = false) -> some View {
         VStack(spacing: 3) {
             Text(label)
                 .font(.system(size: 8, weight: .bold))
@@ -309,6 +310,7 @@ struct CalendarView: View {
             Text(value)
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
                 .foregroundStyle(color)
+                .stealthable(stealth)
         }
         .frame(maxWidth: .infinity)
     }
