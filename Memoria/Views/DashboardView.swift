@@ -457,7 +457,7 @@ struct DashboardView: View {
                                 yStart: .value("Floor", yDomain.lowerBound),
                                 yEnd: .value("Balance", point.balance)
                             )
-                            .interpolationMethod(.monotone)
+                            .interpolationMethod(.linear)
                             .foregroundStyle(
                                 LinearGradient(
                                     stops: [
@@ -477,7 +477,7 @@ struct DashboardView: View {
                                 x: .value("Time", point.date),
                                 y: .value("Balance", point.balance)
                             )
-                            .interpolationMethod(.monotone)
+                            .interpolationMethod(.linear)
                             .foregroundStyle(lineColor)
                             .lineStyle(StrokeStyle(lineWidth: 2.5))
                         }
@@ -497,7 +497,11 @@ struct DashboardView: View {
                                 y: .value("Balance", pt.balance)
                             )
                             .symbolSize(80)
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(
+                                pt.isTrade
+                                    ? (pt.isWin == true ? Color(red: 0.35, green: 0.85, blue: 0.55) : Color(red: 0.95, green: 0.38, blue: 0.38))
+                                    : Color.white
+                            )
                         }
                     }
                     .chartYScale(domain: yDomain)
