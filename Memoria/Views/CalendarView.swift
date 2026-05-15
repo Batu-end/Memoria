@@ -246,8 +246,7 @@ struct CalendarView: View {
                         .stealthable()
                 }
             }
-            .padding(.top, 6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .background(cellBackground(for: date))
             .background(Color.white.opacity(0.03))
             .clipShape(RoundedRectangle(cornerRadius: 8))
