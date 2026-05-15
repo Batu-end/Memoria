@@ -112,7 +112,8 @@ struct AnalyticsView: View {
             return Calendar.current.date(from: DateComponents(
                 year: Calendar.current.component(.year, from: Date()), month: 1, day: 1))!
         } else {
-            return closedTrades.last?.dateAdded ?? Date()
+            // Earliest closed trade entry date — guarantees all trades are included
+            return closedTrades.min(by: { $0.dateAdded < $1.dateAdded })?.dateAdded ?? Date.distantPast
         }
     }
 
@@ -264,19 +265,19 @@ struct AnalyticsView: View {
 
     // Step 3: Stronger section breaks — line + label, generous vertical breathing room
     private func sectionHeader(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             Rectangle()
-                .fill(Color.white.opacity(0.07))
+                .fill(Color.white.opacity(0.1))
                 .frame(height: 1)
             Text(text)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.4))
+                .font(.system(size: 12, weight: .heavy))
+                .foregroundStyle(Color.white.opacity(0.6))
                 .tracking(3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
-        .padding(.top, 28)
-        .padding(.bottom, 12)
+        .padding(.top, 40)
+        .padding(.bottom, 14)
     }
 
     private func card<Content: View>(
@@ -702,57 +703,60 @@ struct AnalyticsView: View {
     private var relativeStrengthCard: some View {
         card {
             VStack(alignment: .leading, spacing: 0) {
-                // Header: timeframe picker + return summary
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
+                // Compute period return from the same curve driving the chart
+                let startingBalance = max(portfolio.startingBalance, 1)
+                let relativeData = engine.calculateRelativeCurve(from: benchmarkStartDate)
+                let periodReturnPct = (relativeData.last?.balance ?? 0) / startingBalance * 100
+                let twrColor: Color = periodReturnPct >= 0 ? .green : .red
+
+                // Header: label + picker on top row, numbers below
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
                         dimLabel("RETURN COMPARISON")
-                        HStack(spacing: 16) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("YOU")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(Color.white.opacity(0.3))
-                                    .tracking(1)
-                                let twr = state.twr * 100
-                                Text(twr >= 0 ? String(format: "+%.1f%%", twr) : String(format: "%.1f%%", twr))
-                                    .font(.system(size: 20, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(twr >= 0 ? Color.green : Color.red)
-                            }
-                            Text("vs")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Color.white.opacity(0.2))
-                                .padding(.top, 12)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("S&P 500")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(Color.white.opacity(0.3))
-                                    .tracking(1)
-                                if let sr = spyReturnPct {
-                                    Text(sr >= 0 ? String(format: "+%.1f%%", sr) : String(format: "%.1f%%", sr))
-                                        .font(.system(size: 20, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(Color.white.opacity(0.55))
-                                } else {
-                                    Text("—")
-                                        .font(.system(size: 20, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(Color.white.opacity(0.2))
-                                }
+                        Spacer()
+                        Picker("", selection: $benchmarkTimeframe) {
+                            ForEach(BenchmarkTimeframe.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 130)
+                    }
+
+                    HStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("YOU")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(Color.white.opacity(0.3))
+                                .tracking(1)
+                            Text(periodReturnPct >= 0 ? String(format: "+%.1f%%", periodReturnPct) : String(format: "%.1f%%", periodReturnPct))
+                                .font(.system(size: 26, weight: .bold, design: .monospaced))
+                                .foregroundStyle(twrColor)
+                        }
+                        Spacer()
+                        Text("vs")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.2))
+                            .padding(.bottom, 4)
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("S&P 500")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(Color.white.opacity(0.3))
+                                .tracking(1)
+                            if let sr = spyReturnPct {
+                                Text(sr >= 0 ? String(format: "+%.1f%%", sr) : String(format: "%.1f%%", sr))
+                                    .font(.system(size: 26, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(Color.white.opacity(0.55))
+                            } else {
+                                Text("—")
+                                    .font(.system(size: 26, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(Color.white.opacity(0.2))
                             }
                         }
                     }
-                    Spacer()
-                    Picker("", selection: $benchmarkTimeframe) {
-                        ForEach(BenchmarkTimeframe.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 130)
                 }
                 .padding(16)
 
                 hairline()
-
-                // Chart: % from 0
-                let startingBalance = max(portfolio.startingBalance, 1)
-                let relativeData = engine.calculateRelativeCurve(from: benchmarkStartDate)
-                let twrColor: Color = state.twr >= 0 ? .green : .red
 
                 if relativeData.count >= 2 {
                     Chart {
@@ -809,7 +813,7 @@ struct AnalyticsView: View {
                             }
                         }
                     }
-                    .frame(height: 180)
+                    .frame(height: 220)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
 
@@ -836,7 +840,7 @@ struct AnalyticsView: View {
                         systemImage: "chart.xyaxis.line",
                         description: Text("Close a trade to compare your performance against the S&P 500.")
                     )
-                    .frame(height: 180)
+                    .frame(height: 220)
                     .padding(16)
                 }
             }
