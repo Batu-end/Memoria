@@ -398,26 +398,41 @@ struct DashboardView: View {
 
     private var equityCurveSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Account Equity ($)")
-                    .font(.headline)
+            // Fixed-height header — reserves space so scrub info never causes a layout jump
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Account Equity")
+                        .font(.headline)
+                    Text(accountingEngine.portfolioState.closedTradesCount > 0
+                         ? "\(accountingEngine.portfolioState.closedTradesCount) closed trades"
+                         : "No closed trades yet")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
-                if let pt = scrubbedPoint {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(pt.balance, format: .currency(code: "USD"))
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(pt.balance >= (accountingEngine.portfolioState.equityCurve.first?.balance ?? 0) ? .green : .red)
-                        Text(pt.date, format: .dateTime.month(.abbreviated).day().year())
+                // Always present — opacity drives visibility so height never changes
+                VStack(alignment: .trailing, spacing: 2) {
+                    let pt = scrubbedPoint
+                    Text(pt?.balance ?? 0, format: .currency(code: "USD"))
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundStyle({
+                            guard let pt else { return Color.clear }
+                            let first = accountingEngine.portfolioState.equityCurve.first?.balance ?? 0
+                            return pt.balance >= first ? Color(red: 0.70, green: 1.0, blue: 0.70) : Color(red: 1.0, green: 0.70, blue: 0.70)
+                        }())
+                    Text(pt?.date ?? Date(), format: .dateTime.month(.abbreviated).day().year())
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    if let ticker = pt?.ticker {
+                        Text(ticker)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        if let ticker = pt.ticker {
-                            Text(ticker)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                    } else {
+                        Text(" ").font(.caption2) // keeps height stable when no ticker
                     }
-                    .transition(.opacity)
                 }
+                .opacity(scrubbedPoint != nil ? 1 : 0)
+                .animation(.easeInOut(duration: 0.15), value: scrubbedPoint != nil)
             }
             .padding(.horizontal)
 
@@ -428,13 +443,14 @@ struct DashboardView: View {
                         systemImage: "chart.line.uptrend.xyaxis",
                         description: Text("Close at least one trade to automatically generate your equity curve.")
                     )
-                    .frame(height: 220)
+                    .frame(height: 260)
                 } else {
                     let curve = accountingEngine.portfolioState.equityCurve
-                    let lineColor: Color = (curve.last?.balance ?? 0) >= (curve.first?.balance ?? 0) ? .green : .red
+                    let isUp = (curve.last?.balance ?? 0) >= (curve.first?.balance ?? 0)
+                    let lineColor: Color = isUp ? Color(red: 0.35, green: 0.85, blue: 0.55) : Color(red: 0.95, green: 0.38, blue: 0.38)
 
                     Chart {
-                        // Base fill gradient
+                        // Gradient fill under line
                         ForEach(curve) { point in
                             AreaMark(
                                 x: .value("Time", point.date),
@@ -444,7 +460,11 @@ struct DashboardView: View {
                             .interpolationMethod(.monotone)
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [lineColor.opacity(0.25), .clear],
+                                    stops: [
+                                        .init(color: lineColor.opacity(0.30), location: 0),
+                                        .init(color: lineColor.opacity(0.08), location: 0.55),
+                                        .init(color: .clear, location: 1),
+                                    ],
                                     startPoint: .top,
                                     endPoint: .bottom
                                 )
@@ -462,34 +482,47 @@ struct DashboardView: View {
                             .lineStyle(StrokeStyle(lineWidth: 2.5))
                         }
 
-                        // Trade markers
-                        ForEach(curve.filter { $0.isTrade }) { point in
-                            PointMark(
-                                x: .value("Time", point.date),
-                                y: .value("Balance", point.balance)
-                            )
-                            .symbolSize(50)
-                            .foregroundStyle(point.isWin == true ? Color.green : Color.red)
-                        }
+                        // Zero baseline
+                        RuleMark(y: .value("Zero", 0))
+                            .lineStyle(StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
+                            .foregroundStyle(Color.white.opacity(0.15))
 
-                        // Scrub rule + dot
+                        // Scrub crosshair + dot
                         if let pt = scrubbedPoint {
                             RuleMark(x: .value("Scrub", pt.date))
-                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                                .foregroundStyle(Color.white.opacity(0.4))
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                                .foregroundStyle(Color.white.opacity(0.35))
                             PointMark(
                                 x: .value("Time", pt.date),
                                 y: .value("Balance", pt.balance)
                             )
-                            .symbolSize(120)
+                            .symbolSize(80)
                             .foregroundStyle(Color.white)
                         }
                     }
                     .chartYScale(domain: yDomain)
                     .chartXAxis {
-                        AxisMarks(preset: .aligned, position: .bottom)
+                        AxisMarks(preset: .aligned, position: .bottom) { _ in
+                            AxisValueLabel()
+                                .foregroundStyle(Color.white.opacity(0.4))
+                            AxisGridLine()
+                                .foregroundStyle(Color.white.opacity(0.06))
+                        }
                     }
-                    .frame(height: 220)
+                    .chartYAxis {
+                        AxisMarks(position: .leading) { value in
+                            AxisValueLabel {
+                                if let d = value.as(Double.self) {
+                                    Text(d >= 1000 ? String(format: "$%.0fk", d / 1000) : d <= -1000 ? String(format: "-$%.0fk", abs(d) / 1000) : String(format: "$%.0f", d))
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(Color.white.opacity(0.35))
+                                }
+                            }
+                            AxisGridLine()
+                                .foregroundStyle(Color.white.opacity(0.06))
+                        }
+                    }
+                    .frame(height: 260)
                     .chartOverlay { proxy in
                         GeometryReader { geo in
                             Rectangle()
@@ -520,6 +553,7 @@ struct DashboardView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
             .padding(.horizontal)
         }
+        .padding(.top, 8)
     }
     
     // MARK: - Sub-views (Refactored to improve compiler performance)
