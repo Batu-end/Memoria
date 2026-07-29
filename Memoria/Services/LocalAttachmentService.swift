@@ -98,4 +98,14 @@ class LocalAttachmentService {
             try? fileManager.removeItem(at: targetURL)
         }
     }
+
+    /// Purges the on-disk images belonging to the given trades.
+    /// Must run *before* the trades leave the model context, while their
+    /// attachmentIds are still readable — SwiftData cascades delete the rows,
+    /// but never the files they point at.
+    func deleteImages(for trades: [Trade]) {
+        for id in trades.compactMap({ $0.attachmentId }) {
+            deleteImage(id: id)
+        }
+    }
 }
