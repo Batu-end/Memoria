@@ -223,6 +223,7 @@ struct TradesListView: View {
             )) {
                 Button("Delete", role: .destructive) {
                     if let trade = tradeToDelete {
+                        LocalAttachmentService.shared.deleteImages(for: [trade])
                         withAnimation { modelContext.delete(trade) }
                     }
                     tradeToDelete = nil

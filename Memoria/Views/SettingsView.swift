@@ -399,6 +399,7 @@ struct SettingsView: View {
     }
     
     private func eraseAllData() {
+        LocalAttachmentService.shared.deleteImages(for: trades)
         for trade in trades { modelContext.delete(trade) }
         for item in watchlistItems { modelContext.delete(item) }
         for snapshot in accountSnapshots { modelContext.delete(snapshot) }

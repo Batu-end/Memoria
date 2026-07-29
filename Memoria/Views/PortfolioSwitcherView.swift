@@ -133,6 +133,7 @@ struct PortfolioSwitcherView: View {
                                 selectedIDString = next?.id.uuidString ?? ""
                             }
                         }
+                        LocalAttachmentService.shared.deleteImages(for: toDelete.trades)
                         modelContext.delete(toDelete)
                     }
                     portfolioToDelete = nil
