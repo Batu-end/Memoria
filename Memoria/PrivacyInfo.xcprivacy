@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Memoria performs no tracking: no advertising identifier, no analytics
+	     SDK, and no linking of user data to third-party data. AnalyticsService
+	     writes only to the local ActivityLog table and never leaves the device. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- Nothing is collected. All trades, portfolios, watchlists and screenshots
+	     are stored locally via SwiftData and the app's Application Support
+	     directory. There is no account, no backend and no telemetry. -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!-- Required-reason APIs. User defaults is the only category the app uses;
+	     it backs @AppStorage-driven settings (trader name, appearance toggles,
+	     stealth mode) that are readable only by Memoria itself. -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
