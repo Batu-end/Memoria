@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import Combine
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     let portfolio: Portfolio
@@ -40,6 +41,17 @@ struct SettingsView: View {
 
     @State private var showingResetAlert = false
     @State private var confirmationText = ""
+
+    @State private var showingExporter = false
+    @State private var showingImporter = false
+    @State private var exportDocument = CSVDocument(text: "")
+    @State private var importResult: ImportResult?
+
+    private struct ImportResult: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String
+    }
 
     @State private var capitalAction: CapitalAction?
     @State private var liveQuotes: [String: StockQuote] = [:]
@@ -306,6 +318,34 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Button {
+                        exportDocument = CSVDocument(text: TradeCSVService.export(trades))
+                        showingExporter = true
+                    } label: {
+                        Label {
+                            Text("Export Trades")
+                        } icon: {
+                            Image(systemName: "square.and.arrow.up").foregroundStyle(.secondary)
+                        }
+                    }
+                    .disabled(trades.isEmpty)
+
+                    Button {
+                        showingImporter = true
+                    } label: {
+                        Label {
+                            Text("Import Trades")
+                        } icon: {
+                            Image(systemName: "square.and.arrow.down").foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Backup")
+                } footer: {
+                    Text("Exports every trade and its individual fills to CSV. Importing adds those trades to \"\(portfolio.name)\" without touching what's already there. Screenshots and deposits are not included.")
+                }
+
+                Section {
                     Button(role: .destructive) {
                         confirmationText = ""
                         showingResetAlert = true
@@ -355,6 +395,25 @@ struct SettingsView: View {
                         modelContext.insert(event)
                     }
                 }
+            .fileExporter(
+                isPresented: $showingExporter,
+                document: exportDocument,
+                contentType: .commaSeparatedText,
+                defaultFilename: exportFilename
+            ) { result in
+                if case let .failure(error) = result {
+                    importResult = ImportResult(title: "Export Failed", message: error.localizedDescription)
+                }
+            }
+            .fileImporter(
+                isPresented: $showingImporter,
+                allowedContentTypes: [.commaSeparatedText, .plainText]
+            ) { result in
+                importTrades(from: result)
+            }
+            .alert(item: $importResult) { result in
+                Alert(title: Text(result.title), message: Text(result.message), dismissButton: .default(Text("OK")))
+            }
             .alert("Reset \"\(portfolio.name)\"?", isPresented: $showingResetAlert) {
                 TextField("Type \"DELETE\" to confirm", text: $confirmationText)
 
@@ -398,6 +457,47 @@ struct SettingsView: View {
         liveQuotes.merge(newQuotes) { (_, new) in new }
     }
     
+    private var exportFilename: String {
+        let stamp = Date().formatted(.iso8601.year().month().day())
+        let safeName = portfolio.name.replacingOccurrences(of: "/", with: "-")
+        return "Memoria-\(safeName)-\(stamp)"
+    }
+
+    private func importTrades(from result: Result<URL, Error>) {
+        do {
+            let url = try result.get()
+
+            // Files chosen through the picker live outside the sandbox.
+            let accessing = url.startAccessingSecurityScopedResource()
+            defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+            let imported = try TradeCSVService.makeTrades(from: try String(contentsOf: url, encoding: .utf8))
+            guard !imported.isEmpty else {
+                importResult = ImportResult(title: "Nothing Imported", message: "No trades were found in that file.")
+                return
+            }
+
+            for trade in imported {
+                trade.portfolio = portfolio
+                modelContext.insert(trade)
+            }
+            try modelContext.save()
+
+            AccountingEngine.shared.update(
+                trades: trades,
+                startingBalance: portfolio.startingBalance,
+                capitalEvents: capitalEvents
+            )
+
+            importResult = ImportResult(
+                title: "Import Complete",
+                message: "Added \(imported.count) trade\(imported.count == 1 ? "" : "s") to \"\(portfolio.name)\"."
+            )
+        } catch {
+            importResult = ImportResult(title: "Import Failed", message: error.localizedDescription)
+        }
+    }
+
     private func eraseAllData() {
         LocalAttachmentService.shared.deleteImages(for: trades)
         for trade in trades { modelContext.delete(trade) }
