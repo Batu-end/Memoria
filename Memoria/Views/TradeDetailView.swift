@@ -39,6 +39,14 @@ struct TradeDetailView: View {
     @State private var livePrice: Double?
     @State private var selectedPhotoItem: PhotosPickerItem?
 
+    // Notes draft — decouples TextEditor from SwiftData so every keystroke doesn't re-render
+    @State private var draftNotes: String = ""
+    @State private var notesCommitTask: Task<Void, Never>?
+    @FocusState private var notesEditorFocused: Bool
+    #if os(iOS)
+    @State private var showCamera = false
+    #endif
+
     private let refreshTimer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -81,12 +89,18 @@ struct TradeDetailView: View {
                 )
                 .ignoresSafeArea()
             )
+            #if os(iOS)
+            .scrollDismissesKeyboard(.interactively)
+            #endif
 
             if showEnlargeSheet {
                 imageOverlay
             }
         }
-        .onAppear { if trade.status == .open { Task { await fetchCurrentPrice() } } }
+        .onAppear {
+            draftNotes = trade.notes ?? ""
+            if trade.status == .open { Task { await fetchCurrentPrice() } }
+        }
         .onReceive(refreshTimer) { _ in if trade.status == .open { Task { await fetchCurrentPrice() } } }
         .navigationTitle(trade.ticker)
         .darkNavigationBar()
@@ -486,6 +500,9 @@ struct TradeDetailView: View {
             .padding(.bottom, 10)
 
             // Hero Image
+            #if os(iOS)
+            iOSImageSection
+            #else
             ZStack(alignment: .bottomTrailing) {
                 LocalImageView(attachmentId: trade.attachmentId)
                     .matchedGeometryEffect(id: "attachment", in: zoomNamespace)
@@ -497,7 +514,6 @@ struct TradeDetailView: View {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
                         }
                     }
-                    #if os(macOS)
                     .dropDestination(for: Data.self) { items, _ in
                         guard let imageData = items.first else { return false }
                         if let newId = LocalAttachmentService.shared.saveImage(from: imageData) {
@@ -516,21 +532,11 @@ struct TradeDetailView: View {
                         }
                         return false
                     }
-                    #else
-                    .overlay {
-                        if trade.attachmentId == nil {
-                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                                Color.clear
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    #endif
 
                 if trade.attachmentId != nil {
-                    Button(action: {
+                    Button {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
-                    }) {
+                    } label: {
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                             .font(.system(size: 10, weight: .semibold))
                             .padding(7)
@@ -539,23 +545,9 @@ struct TradeDetailView: View {
                     .buttonStyle(.plain)
                     .padding(10)
                 }
-
-                #if os(iOS)
-                if trade.attachmentId != nil {
-                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        Image(systemName: "photo.badge.plus")
-                            .font(.system(size: 10, weight: .semibold))
-                            .padding(7)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .foregroundStyle(.white)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                #endif
             }
             .frame(maxWidth: .infinity)
+            #endif
 
             Divider().background(Color.white.opacity(0.08)).padding(.vertical, 12)
 
@@ -571,25 +563,41 @@ struct TradeDetailView: View {
                     ), fontSize: 16)
                 }
 
-                TextEditor(text: Binding(
-                    get: { trade.notes ?? "" },
-                    set: { trade.notes = $0.isEmpty ? nil : $0 }
-                ))
+                TextEditor(text: $draftNotes)
+                .focused($notesEditorFocused)
                 .font(.system(.body, design: .serif))
                 .lineSpacing(4)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 120)
+                #if os(iOS)
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") { notesEditorFocused = false }
+                            .fontWeight(.semibold)
+                    }
+                }
+                #endif
                 .padding(12)
                 .background(Color.white.opacity(0.03))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(alignment: .topLeading) {
-                    if (trade.notes ?? "").isEmpty {
+                    if draftNotes.isEmpty {
                         Text("Tap to add your notes...")
                             .font(.system(.body, design: .serif))
                             .foregroundStyle(.tertiary)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
                             .allowsHitTesting(false)
+                    }
+                }
+                .onChange(of: draftNotes) { _, newValue in
+                    // Debounce: only write to SwiftData 0.5s after typing stops
+                    notesCommitTask?.cancel()
+                    notesCommitTask = Task {
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        guard !Task.isCancelled else { return }
+                        trade.notes = newValue.isEmpty ? nil : newValue
                     }
                 }
             }
@@ -599,6 +607,110 @@ struct TradeDetailView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.05), lineWidth: 0.5))
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
+
+    // MARK: - iOS Image Section
+
+    #if os(iOS)
+    private var iOSImageSection: some View {
+        ZStack(alignment: .bottomTrailing) {
+            if trade.attachmentId != nil {
+                // Image exists — show it, tap to enlarge
+                LocalImageView(attachmentId: trade.attachmentId)
+                    .matchedGeometryEffect(id: "attachment", in: zoomNamespace)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 140, maxHeight: 240)
+                    .clipped()
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
+                    }
+
+                // Enlarge button
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showEnlargeSheet = true }
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(7)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(10)
+
+                // Replace buttons (leading side)
+                HStack(spacing: 8) {
+                    Button { showCamera = true } label: {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(7)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(7)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            } else {
+                // No image — two buttons side by side
+                HStack(spacing: 12) {
+                    Button { showCamera = true } label: {
+                        VStack(spacing: 8) {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.secondary)
+                            Text("Camera")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 110)
+                        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "photo.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.secondary)
+                            Text("Library")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 110)
+                        .background(Color(red: 0.15, green: 0.15, blue: 0.16))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .sheet(isPresented: $showCamera) {
+            CameraPicker { image in
+                if let data = image.jpegData(compressionQuality: 0.8),
+                   let newId = LocalAttachmentService.shared.saveImage(from: data) {
+                    if let old = trade.attachmentId { LocalAttachmentService.shared.deleteImage(id: old) }
+                    trade.attachmentId = newId
+                }
+                showCamera = false
+            }
+            .ignoresSafeArea()
+        }
+    }
+    #endif
 
     // MARK: - Execution Timeline
 

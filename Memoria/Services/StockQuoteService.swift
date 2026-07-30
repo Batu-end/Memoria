@@ -89,12 +89,13 @@ class StockQuoteService {
                   let indicators = result["indicators"] as? [String: Any],
                   let quote = indicators["quote"] as? [[String: Any]],
                   let firstQuote = quote.first,
-                  let closes = firstQuote["close"] as? [Double?] else {
+                  let closesRaw = firstQuote["close"] as? [Any] else {
                 return nil
             }
-            
-            // Return the first valid closing price in the window
-            return closes.compactMap { $0 }.first
+
+            // JSONSerialization returns NSNumber or NSNull, never Swift Double?
+            let closes = closesRaw.compactMap { $0 is NSNull ? nil : ($0 as? Double) }
+            return closes.first
         } catch {
             return nil
         }
@@ -129,16 +130,17 @@ class StockQuoteService {
                   let indicators = result["indicators"] as? [String: Any],
                   let quote = indicators["quote"] as? [[String: Any]],
                   let firstQuote = quote.first,
-                  let closes = firstQuote["close"] as? [Double?] else {
+                  let closesRaw = firstQuote["close"] as? [Any] else {
                 return nil
             }
-            
+
+            // JSONSerialization returns NSNumber or NSNull, never Swift Double?
             var series: [HistoricalQuote] = []
             for (i, ts) in timestamps.enumerated() {
-                if i < closes.count, let close = closes[i] {
-                    let date = Date(timeIntervalSince1970: TimeInterval(ts))
-                    series.append(HistoricalQuote(date: date, close: close))
-                }
+                guard i < closesRaw.count, !(closesRaw[i] is NSNull),
+                      let close = closesRaw[i] as? Double else { continue }
+                let date = Date(timeIntervalSince1970: TimeInterval(ts))
+                series.append(HistoricalQuote(date: date, close: close))
             }
             return series
         } catch {
@@ -160,8 +162,8 @@ class StockQuoteService {
               let result = results.first,
               let indicators = result["indicators"] as? [String: Any],
               let quote = indicators["quote"] as? [[String: Any]],
-              let closes = quote.first?["close"] as? [Double?] else { return [] }
-        return closes.compactMap { $0 }
+              let closesRaw = quote.first?["close"] as? [Any] else { return [] }
+        return closesRaw.compactMap { $0 is NSNull ? nil : ($0 as? Double) }
     }
 
     // MARK: - Internal
