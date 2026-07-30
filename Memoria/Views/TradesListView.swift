@@ -339,7 +339,11 @@ struct TradesListView: View {
         guard !tickers.isEmpty else { return }
         isRefreshing = true
         let quotes = await StockQuoteService.shared.fetchQuotes(for: Array(Set(tickers)))
-        accountingEngine.update(quotes: quotes)
+        // Feeding an empty dict to the engine would zero every open position's
+        // unrealized P&L, so leave the previous quotes in place on failure.
+        if !quotes.isEmpty {
+            accountingEngine.update(quotes: quotes)
+        }
         isRefreshing = false
     }
 }

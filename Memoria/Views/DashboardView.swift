@@ -86,6 +86,7 @@ struct DashboardView: View {
     @State private var spyHistoricalData: [HistoricalQuote] = []
     
     @State private var marketStatus: MarketStatus = MarketService.shared.currentStatus()
+    @State private var quotesAreStale = false
     @State private var isDashboardReady = false
     @State private var showPortfolioSwitcher = false
     
@@ -189,11 +190,11 @@ struct DashboardView: View {
             // Market Status Indicator
             HStack(spacing: 6) {
                 Circle()
-                    .fill(marketStatus == .open ? Color.green : (marketStatus == .preMarket || marketStatus == .postMarket ? Color.yellow : (marketStatus == .weekend ? Color.orange : Color.gray)))
+                    .fill(quotesAreStale ? Color.red : (marketStatus == .open ? Color.green : (marketStatus == .preMarket || marketStatus == .postMarket ? Color.yellow : (marketStatus == .weekend ? Color.orange : Color.gray))))
                     .frame(width: 8, height: 8)
-                    .shadow(color: (marketStatus == .open ? Color.green : (marketStatus == .preMarket || marketStatus == .postMarket ? Color.yellow : Color.clear)).opacity(0.5), radius: 5)
-                
-                Text(marketStatus.title)
+                    .shadow(color: quotesAreStale ? Color.red.opacity(0.5) : (marketStatus == .open ? Color.green : (marketStatus == .preMarket || marketStatus == .postMarket ? Color.yellow : Color.clear)).opacity(0.5), radius: 5)
+
+                Text(quotesAreStale ? "Prices Unavailable" : marketStatus.title)
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
@@ -843,7 +844,15 @@ struct DashboardView: View {
         let quotes = await StockQuoteService.shared.fetchQuotes(for: tickers)
         await MainActor.run {
             withAnimation {
-                self.liveQuotes = quotes
+                // An empty response means every symbol failed. Keep the last known
+                // prices instead of clearing them — with no quote the engine leaves
+                // unrealizedPnl at 0, which reads as "flat" rather than "unknown".
+                if quotes.isEmpty {
+                    self.quotesAreStale = true
+                } else {
+                    self.liveQuotes.merge(quotes) { _, new in new }
+                    self.quotesAreStale = false
+                }
             }
         }
     }

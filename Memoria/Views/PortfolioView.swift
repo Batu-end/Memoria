@@ -160,7 +160,10 @@ struct PortfolioView: View {
         let tickers = Array(Set(openTrades.map { $0.ticker }))
         let quotes = await StockQuoteService.shared.fetchQuotes(for: tickers)
         await MainActor.run {
-            withAnimation { self.liveQuotes = quotes }
+            // Keep the last known prices when the fetch comes back empty.
+            if !quotes.isEmpty {
+                withAnimation { self.liveQuotes.merge(quotes) { _, new in new } }
+            }
             self.isRefreshing = false
         }
     }
